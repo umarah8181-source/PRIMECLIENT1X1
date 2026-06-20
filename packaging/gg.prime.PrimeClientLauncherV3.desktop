@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Prime Client Launcher
+Exec=primeclient-launcher-v3
+Type=Application
+Icon=gg.prime.PrimeClientLauncherV3
+Categories=Game;
