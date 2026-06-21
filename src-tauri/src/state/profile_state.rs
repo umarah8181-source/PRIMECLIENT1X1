@@ -287,10 +287,12 @@ pub struct ProfileSettings {
     pub fullscreen: bool, // Vollbild
     #[serde(default)]
     pub extra_game_args: Vec<String>, // Zusätzliche Argumente für das Spiel
-    #[serde(default)] // Für Abwärtskompatibilität
+    #[serde(default)]
     pub custom_jvm_args: Option<String>, // Zusätzliche JVM-Argumente als String
     #[serde(default)]
     pub quick_play_path: Option<String>, // Quick Play Pfad für direkten Welt-/Server-Start
+    #[serde(default)]
+    pub gc_type: Option<String>, // GC preset type for performance optimization
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -3354,6 +3356,7 @@ impl Default for ProfileSettings {
             extra_game_args: Vec::new(),
             custom_jvm_args: None, // Standardmäßig keine benutzerdefinierten JVM-Args
             quick_play_path: None,
+            gc_type: None,
         }
     }
 }

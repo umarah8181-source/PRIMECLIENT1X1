@@ -154,3 +154,39 @@ export async function setGlobalCustomJvmArgs(jvmArgs: string | null): Promise<vo
     throw error;
   }
 }
+
+/**
+ * Gets the global GC type from the launcher configuration.
+ * @returns A promise that resolves with the GC type string.
+ */
+export async function getGlobalGcType(): Promise<string> {
+  console.log("[LauncherConfigService] Getting global GC type");
+  try {
+    const config = await getLauncherConfig();
+    return config.global_gc_type || "default";
+  } catch (error) {
+    console.error("[LauncherConfigService] Failed to get global GC type:", error);
+    throw error;
+  }
+}
+
+/**
+ * Sets the global GC type in the launcher configuration.
+ * @param gcType The GC type to save.
+ * @returns A promise that resolves when the setting is successfully set.
+ */
+export async function setGlobalGcType(gcType: string): Promise<void> {
+  console.log(`[LauncherConfigService] Setting global GC type:`, gcType);
+  try {
+    const currentConfig = await getLauncherConfig();
+    const newConfig: LauncherConfig = {
+      ...currentConfig,
+      global_gc_type: gcType,
+    };
+    await setLauncherConfig(newConfig);
+    console.log("[LauncherConfigService] Successfully set global GC type.");
+  } catch (error) {
+    console.error("[LauncherConfigService] Failed to set global GC type:", error);
+    throw error;
+  }
+}

@@ -47,6 +47,7 @@ export interface LauncherConfig {
   pack_rollout_override: "auto" | "off" | "on";
   selected_skin_id: string | null;
   selected_cape_url: string | null;
+  global_gc_type?: string | null; // Global default GC preset type for standard profiles
 }
 
 export interface ReferralInfo {

@@ -14,7 +14,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { toast } from "react-hot-toast";
 import { cn } from "../../../lib/utils";
-import { getGlobalMemorySettings, setGlobalMemorySettings, getGlobalCustomJvmArgs, setGlobalCustomJvmArgs } from "../../../services/launcher-config-service";
+import { getGlobalMemorySettings, setGlobalMemorySettings, getGlobalCustomJvmArgs, setGlobalCustomJvmArgs, getGlobalGcType, setGlobalGcType } from "../../../services/launcher-config-service";
 import type { MemorySettings } from "../../../types/launcherConfig";
 import { useTranslation } from "react-i18next";
 
@@ -57,6 +57,7 @@ export function JavaSettingsTab({
   const javaInstallRef = useRef<HTMLDivElement>(null);
   const memoryRef = useRef<HTMLDivElement>(null);
   const argsRef = useRef<HTMLDivElement>(null);
+  const perfRef = useRef<HTMLDivElement>(null);
 
   // New state variables for Java detection and validation
   const [detectedJavaInstallations, setDetectedJavaInstallations] = useState<
@@ -86,6 +87,10 @@ export function JavaSettingsTab({
   const [globalJvmArgs, setGlobalJvmArgsState] = useState<string | null>(null);
   const [isLoadingGlobalJvmArgs, setIsLoadingGlobalJvmArgs] = useState(false);
   
+  // GC preset type state
+  const [gcType, setGcType] = useState<string>("default");
+  const [isLoadingGcType, setIsLoadingGcType] = useState(false);
+  
 
   useEffect(() => {
     if (isBackgroundAnimationEnabled) {
@@ -98,8 +103,9 @@ export function JavaSettingsTab({
       }
 
       const elements = [
-        javaInstallRef.current,
         memoryRef.current,
+        perfRef.current,
+        javaInstallRef.current,
         argsRef.current,
       ].filter(Boolean);
 
@@ -211,6 +217,26 @@ export function JavaSettingsTab({
       setIsLoadingGlobalJvmArgs(false);
     }
   }, [editedProfile.is_standard_version]);
+
+  // Load global GC type for standard profiles, or profile specific settings for custom profiles
+  useEffect(() => {
+    if (editedProfile.is_standard_version) {
+      setIsLoadingGcType(true);
+      getGlobalGcType()
+        .then((type) => {
+          setGcType(type || "default");
+        })
+        .catch((error) => {
+          console.error("Failed to load global GC type:", error);
+        })
+        .finally(() => {
+          setIsLoadingGcType(false);
+        });
+    } else {
+      setGcType(editedProfile.settings?.gc_type || "default");
+      setIsLoadingGcType(false);
+    }
+  }, [editedProfile.is_standard_version, editedProfile.settings?.gc_type]);
 
   const browseForJavaPath = async () => {
     try {
@@ -341,6 +367,22 @@ export function JavaSettingsTab({
     }
   };
 
+  const handleGcTypeChange = async (value: string) => {
+    setGcType(value);
+    if (editedProfile.is_standard_version) {
+      try {
+        await setGlobalGcType(value);
+      } catch (error) {
+        console.error("Failed to save global GC type:", error);
+        toast.error("Failed to save global performance settings");
+      }
+    } else {
+      const newSettings = { ...editedProfile.settings };
+      newSettings.gc_type = value;
+      updateProfile({ settings: newSettings });
+    }
+  };
+
   const handleCustomJavaToggle = (checked: boolean) => {
     setUseCustomJava(checked);
     if (checked) {
@@ -467,6 +509,73 @@ export function JavaSettingsTab({
                   )}
                 </div>
               </>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      <div ref={perfRef} className="space-y-4">
+        <div>
+          <h3 className="text-3xl font-minecraft text-white mb-3 lowercase">
+            Performance & Smoothness Optimizations
+          </h3>
+          <Card
+            variant="flat"
+            className="p-4 border border-white/10 bg-black/20"
+          >
+            {isLoadingGcType ? (
+              <div className="flex items-center justify-center py-8">
+                <Icon icon="solar:refresh-bold" className="w-6 h-6 animate-spin text-white mr-3" />
+                <span className="text-white font-minecraft">
+                  {t('profiles.settings.loadingSettings')}
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <span className="text-sm font-minecraft text-white">FPS Optimization Preset</span>
+                    <p className="text-xs text-white/50 font-minecraft-ten mt-1">
+                      Choose a garbage collector and JVM configuration optimized for low latency and smooth frame rates.
+                    </p>
+                  </div>
+                  <div className="relative min-w-[200px]">
+                    <select
+                      value={gcType}
+                      onChange={(e) => handleGcTypeChange(e.target.value)}
+                      className="w-full bg-black/40 text-white font-minecraft-ten text-sm p-2.5 rounded-lg border border-white/20 focus:outline-none focus:border-accent cursor-pointer appearance-none pr-8"
+                      style={{
+                        borderColor: `${accentColor.value}40`,
+                      }}
+                    >
+                      <option value="default" className="bg-neutral-900 text-white">Default G1GC (Standard)</option>
+                      <option value="g1gc_optimized" className="bg-neutral-900 text-white">G1GC Optimized (Aikar's Flags)</option>
+                      <option value="zgc_smooth" className="bg-neutral-900 text-white">ZGC (Ultra Smooth - Java 15+)</option>
+                    </select>
+                    <Icon
+                      icon="solar:alt-arrow-down-linear"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-white/5">
+                  <div className="flex items-start gap-2.5 text-xs text-white/70 font-minecraft-ten leading-relaxed">
+                    <Icon icon="solar:info-circle-bold" className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      {gcType === "default" && (
+                        <span>Uses standard Minecraft launch parameters. Good compatibility, moderate performance.</span>
+                      )}
+                      {gcType === "g1gc_optimized" && (
+                        <span>Applies CPU multithreading optimizations, pre-touch heap allocation, string deduplication, and JIT compiler tuning. Boosts FPS and stabilizes stutters.</span>
+                      )}
+                      {gcType === "zgc_smooth" && (
+                        <span className="text-accent">Uses Z Garbage Collector (ZGC). Drops GC pause times to under 1ms, completely eliminating garbage collection micro-stutters. Generates the smoothest Minecraft gameplay. Requires Java 15 or higher.</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </Card>
         </div>

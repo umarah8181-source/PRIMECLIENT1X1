@@ -91,6 +91,8 @@ pub struct LauncherConfig {
     pub device_id: Option<String>,
     #[serde(default)]
     pub installed_version: Option<String>,
+    #[serde(default)]
+    pub global_gc_type: Option<String>, // Global default GC preset type for standard profiles
 }
 
 fn default_config_version() -> u32 {
@@ -175,6 +177,7 @@ impl Default for LauncherConfig {
             selected_cape_url: None,
             device_id: None,
             installed_version: None,
+            global_gc_type: None,
         }
     }
 }
@@ -559,6 +562,7 @@ impl ConfigManager {
                     selected_cape_url: new_config.selected_cape_url.clone(),
                     device_id: new_config.device_id.clone(),
                     installed_version: new_config.installed_version.clone(),
+                    global_gc_type: new_config.global_gc_type.clone(),
                 };
 
                 true

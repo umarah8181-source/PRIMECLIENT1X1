@@ -343,26 +343,90 @@ impl MinecraftLauncher {
 
         // Add recommended GC flags only if no custom GC is specified
         if has_custom_gc {
-            info!("Custom GC detected in JVM arguments, skipping default G1GC flags");
+            info!("Custom GC detected in JVM arguments, skipping default GC flags");
         } else {
+            let effective_gc_type = if let Some(p) = &profile {
+                if p.is_standard_version {
+                    launcher_config.global_gc_type.clone().unwrap_or_else(|| "default".to_string())
+                } else {
+                    p.settings.gc_type.clone().unwrap_or_else(|| "default".to_string())
+                }
+            } else {
+                launcher_config.global_gc_type.clone().unwrap_or_else(|| "default".to_string())
+            };
+
             command.arg("-XX:+UnlockExperimentalVMOptions");
-            command.arg("-XX:+UseG1GC");
-            // Add additional G1GC optimization flags like vanilla launcher
-            command.arg("-XX:G1NewSizePercent=20");
-            command.arg("-XX:G1ReservePercent=20");
-            command.arg("-XX:MaxGCPauseMillis=50");
-            command.arg("-XX:G1HeapRegionSize=32M");
-            // Premium FPS Boost / Optimization JVM flags
-            command.arg("-XX:+AlwaysPreTouch");
-            command.arg("-XX:+UseNUMA");
-            command.arg("-XX:+ParallelRefProcEnabled");
-            command.arg("-XX:+UseStringDeduplication");
-            command.arg("-XX:InitiatingHeapOccupancyPercent=15");
-            command.arg("-XX:G1MixedGCLiveThresholdPercent=90");
-            command.arg("-XX:G1RSetUpdatingPauseTimePercent=5");
-            command.arg("-XX:SurvivorRatio=32");
-            command.arg("-XX:MaxTenuringThreshold=1");
-            command.arg("-XX:+PerfDisableSharedMem");
+            match effective_gc_type.as_str() {
+                "zgc_smooth" => {
+                    info!("Applying ZGC Performance & Smoothness flags");
+                    command.arg("-XX:+UseZGC");
+                    command.arg("-XX:+ZProactive");
+                    command.arg("-XX:+AlwaysPreTouch");
+                    command.arg("-XX:+ParallelRefProcEnabled");
+                    command.arg("-XX:+UseNUMA");
+                    command.arg("-XX:+UseStringDeduplication");
+                    command.arg("-XX:+PerfDisableSharedMem");
+                    
+                    // JIT compiler optimized inlines
+                    command.arg("-XX:+TieredCompilation");
+                    command.arg("-XX:+UseFastAccessorMethods");
+                    command.arg("-XX:+Inline");
+                    command.arg("-XX:MaxInlineLevel=15");
+                    
+                    // Hardware accelerated graphics pipeline optimizations for Java2D GUI overlays
+                    command.arg("-Dsun.java2d.opengl=true");
+                    command.arg("-Dsun.java2d.d3d=true");
+                    command.arg("-Dsun.java2d.noddraw=true");
+                }
+                "g1gc_optimized" => {
+                    info!("Applying G1GC Highly-Optimized (Aikar's) Performance flags");
+                    command.arg("-XX:+UseG1GC");
+                    command.arg("-XX:+ParallelRefProcEnabled");
+                    command.arg("-XX:MaxGCPauseMillis=20");
+                    command.arg("-XX:+AlwaysPreTouch");
+                    command.arg("-XX:G1NewSizePercent=30");
+                    command.arg("-XX:G1MaxNewSizePercent=40");
+                    command.arg("-XX:G1HeapRegionSize=8M");
+                    command.arg("-XX:G1ReservePercent=20");
+                    command.arg("-XX:InitiatingHeapOccupancyPercent=15");
+                    command.arg("-XX:G1MixedGCLiveThresholdPercent=90");
+                    command.arg("-XX:G1RSetUpdatingPauseTimePercent=5");
+                    command.arg("-XX:SurvivorRatio=32");
+                    command.arg("-XX:MaxTenuringThreshold=1");
+                    command.arg("-XX:+PerfDisableSharedMem");
+                    command.arg("-XX:+UseStringDeduplication");
+                    command.arg("-XX:+UseNUMA");
+                    
+                    // JIT compiler optimized inlines
+                    command.arg("-XX:+TieredCompilation");
+                    command.arg("-XX:+UseFastAccessorMethods");
+                    command.arg("-XX:+Inline");
+                    command.arg("-XX:MaxInlineLevel=15");
+                    
+                    // Hardware accelerated graphics pipeline optimizations for Java2D GUI overlays
+                    command.arg("-Dsun.java2d.opengl=true");
+                    command.arg("-Dsun.java2d.d3d=true");
+                    command.arg("-Dsun.java2d.noddraw=true");
+                }
+                _ => {
+                    info!("Applying Default G1GC flags");
+                    command.arg("-XX:+UseG1GC");
+                    command.arg("-XX:G1NewSizePercent=20");
+                    command.arg("-XX:G1ReservePercent=20");
+                    command.arg("-XX:MaxGCPauseMillis=50");
+                    command.arg("-XX:G1HeapRegionSize=32M");
+                    command.arg("-XX:+AlwaysPreTouch");
+                    command.arg("-XX:+UseNUMA");
+                    command.arg("-XX:+ParallelRefProcEnabled");
+                    command.arg("-XX:+UseStringDeduplication");
+                    command.arg("-XX:InitiatingHeapOccupancyPercent=15");
+                    command.arg("-XX:G1MixedGCLiveThresholdPercent=90");
+                    command.arg("-XX:G1RSetUpdatingPauseTimePercent=5");
+                    command.arg("-XX:SurvivorRatio=32");
+                    command.arg("-XX:MaxTenuringThreshold=1");
+                    command.arg("-XX:+PerfDisableSharedMem");
+                }
+            }
         }
 
         // Add Prime client specific parameters
