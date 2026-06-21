@@ -101,6 +101,8 @@ interface FriendsState {
   logoutFriendsAccount: () => Promise<void>;
   updateFriendsProfile: (newAvatarUrl: string) => Promise<void>;
   syncWithMinecraftAccount: (minecraftAccount: any | null) => Promise<void>;
+  ranks: Record<string, string>;
+  loadRanks: () => Promise<void>;
 }
 
 // Load account from localStorage if exists
@@ -137,6 +139,17 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   intervalId: null,
   launchedServer: null,
   friendsAccount: initialFriendsAccount,
+  ranks: {},
+
+  loadRanks: async () => {
+    try {
+      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/ranks.json`);
+      const data = await res.json();
+      set({ ranks: data || {} });
+    } catch (e) {
+      console.error("Failed to load ranks:", e);
+    }
+  },
 
   openSidebar: () => set({ isSidebarOpen: true }),
   closeSidebar: () => set({ isSidebarOpen: false }),
@@ -292,6 +305,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
+      await get().loadRanks();
       const account = get().friendsAccount;
       if (!account) {
         set({ isLoading: false });
@@ -400,6 +414,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   loadCurrentUser: async () => {
     try {
+      await get().loadRanks();
       const account = get().friendsAccount;
       if (!account) return;
       const myUuid = account.uuid;

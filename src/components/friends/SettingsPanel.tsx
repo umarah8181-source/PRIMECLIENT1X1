@@ -7,6 +7,7 @@ import { useThemeStore } from "../../store/useThemeStore";
 import { useCrafatarAvatar } from "../../hooks/useCrafatarAvatar";
 import { StatusSelector } from "./StatusSelector";
 import { toast } from "react-hot-toast";
+import { renderRankBadge } from "../../lib/rank-utils";
 
 const getStatusConfig = (): Record<OnlineState, { color: string; label: string; glow: string }> => ({
   ONLINE: { color: "#22c55e", label: i18n.t('friends.status.online'), glow: "0 0 8px rgba(34, 197, 94, 0.6)" },
@@ -232,7 +233,10 @@ export function SettingsPanel() {
             />
           </div>
           <div className="text-center w-full">
-            <div className="text-white font-minecraft-ten text-sm mb-1">{currentUser.username}</div>
+            <div className="text-white font-minecraft-ten text-sm mb-1 flex items-center justify-center gap-1.5">
+              {currentUser.username}
+              {renderRankBadge(currentUser.username)}
+            </div>
             <div className="text-white/50 font-minecraft text-xs mb-3">{status.label}</div>
             
             <button

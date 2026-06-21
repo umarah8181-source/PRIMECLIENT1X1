@@ -4,6 +4,7 @@ import { useProfileStore } from "../../store/profile-store";
 import { useProfileLaunch } from "../../hooks/useProfileLaunch";
 import { useFriendsStore } from "../../store/friends-store";
 import { toast } from "react-hot-toast";
+import { renderRankBadge } from "../../lib/rank-utils";
 
 interface MessageReaction {
   emoji: string;
@@ -109,10 +110,11 @@ export function ChatMessage({ message, isOwn, friendUuid, friendName, currentUse
         {showHeader && (
           <div className="flex items-baseline gap-2 mb-0.5">
             <span
-              className="font-minecraft-ten text-sm"
+              className="font-minecraft-ten text-sm flex items-center gap-1.5"
               style={{ color: isOwn ? accentColor : "#ffffff" }}
             >
               {displayName}
+              {renderRankBadge(isOwn ? (currentUserName || "") : friendName)}
             </span>
             <span className="text-[11px] text-white/40 font-minecraft-ten">
               {formatTime(timestamp)}

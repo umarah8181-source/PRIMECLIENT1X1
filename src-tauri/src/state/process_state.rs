@@ -538,11 +538,9 @@ impl ProcessManager {
         {
             use std::os::windows::process::CommandExt;
             // Standard Windows process creation flags for launching Minecraft as an independent game process.
-            // DETACHED_PROCESS: Allows Minecraft to continue running if the launcher closes.
             // CREATE_NEW_PROCESS_GROUP: Gives Minecraft its own console group so Ctrl+C in launcher doesn't kill the game.
             command.creation_flags(
-                windows_sys::Win32::System::Threading::DETACHED_PROCESS
-                    | windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP,
+                windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP,
             );
         }
 

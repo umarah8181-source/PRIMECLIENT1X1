@@ -10,6 +10,7 @@ import { cn } from "../../lib/utils";
 import { useProfileStore } from "../../store/profile-store";
 import { useProfileLaunch } from "../../hooks/useProfileLaunch";
 import { toast } from "react-hot-toast";
+import { renderRankBadge } from "../../lib/rank-utils";
 
 interface FriendListItemProps {
   friend: FriendsFriendUser;
@@ -189,10 +190,11 @@ export const FriendListItem = memo(function FriendListItem({ friend }: FriendLis
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
+        <div className="flex items-center gap-2 mb-0.5 min-w-0">
           <span className="text-base font-medium text-white truncate font-minecraft-ten">
             {friend.username}
           </span>
+          {renderRankBadge(friend.username)}
         </div>
         <div className="flex items-center gap-1.5 text-base text-white/50 font-minecraft">
           {friend.server ? (
