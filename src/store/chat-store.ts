@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { useMinecraftAuthStore } from './minecraft-auth-store';
 import { useFriendsStore } from './friends-store';
 
 export interface ChatParticipant {
@@ -98,9 +97,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadChats: async () => {
     try {
       const friends = useFriendsStore.getState().friends;
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) return;
-      const myUuid = activeAccount.id;
+      const friendsAccount = useFriendsStore.getState().friendsAccount;
+      if (!friendsAccount) return;
+      const myUuid = friendsAccount.uuid;
 
       const chatsDetails = await Promise.all(
         friends.map(async (friend) => {
@@ -166,9 +165,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   sendMessage: async (chatId: string, content: string, relatesTo?: string) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) throw new Error("No active account");
-      const senderId = activeAccount.id;
+      const friendsAccount = useFriendsStore.getState().friendsAccount;
+      if (!friendsAccount) throw new Error("Not logged into friends account");
+      const senderId = friendsAccount.uuid;
       
       const messageId = crypto.randomUUID();
       const message: ChatMessage = {
@@ -270,9 +269,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   sendTypingIndicator: async (chatId: string) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) return;
-      const myUuid = activeAccount.id;
+      const friendsAccount = useFriendsStore.getState().friendsAccount;
+      if (!friendsAccount) return;
+      const myUuid = friendsAccount.uuid;
 
       await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}/typing/${myUuid}.json`, {
         method: 'PUT',

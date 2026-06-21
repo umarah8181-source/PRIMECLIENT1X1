@@ -63,7 +63,7 @@ function PrivacyToggle({ label, description, enabled, loading, onToggle, accentC
 export function SettingsPanel() {
   const { t } = useTranslation();
   const { accentColor } = useThemeStore();
-  const { currentUser, closeSettings, updatePrivacySetting } = useFriendsStore();
+  const { currentUser, closeSettings, updatePrivacySetting, logoutFriendsAccount } = useFriendsStore();
   const avatarUrl = useCrafatarAvatar({ uuid: currentUser?.uuid, size: 64 });
   const [loadingSettings, setLoadingSettings] = useState<Record<string, boolean>>({});
 
@@ -205,6 +205,21 @@ export function SettingsPanel() {
               accentColor={accentColor.value}
             />
           </div>
+        </div>
+
+        <div className="pt-2 border-t" style={{ borderColor: `${accentColor.value}30` }}>
+          <button
+            onClick={logoutFriendsAccount}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-minecraft-ten text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              color: "#ef4444",
+            }}
+          >
+            <Icon icon="solar:logout-bold" className="w-4 h-4" />
+            Logout from Friends
+          </button>
         </div>
       </div>
     </div>

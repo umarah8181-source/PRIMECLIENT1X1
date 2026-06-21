@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/core';
-import { useMinecraftAuthStore } from './minecraft-auth-store';
 import { useProcessStore } from './useProcessStore';
 import { useChatStore, ChatMessage } from './chat-store';
 import { toast } from '../components/ui/GlobalToaster';
@@ -56,6 +54,7 @@ interface FriendsState {
   lastFetchedAt: number | null;
   intervalId: number | null;
   launchedServer: string | null;
+  friendsAccount: { uuid: string; username: string } | null;
 
   openSidebar: () => void;
   closeSidebar: () => void;
@@ -92,6 +91,21 @@ interface FriendsState {
   closeSettings: () => void;
   updatePrivacySetting: (setting: string, value: boolean) => Promise<void>;
   setLaunchedServer: (server: string | null) => void;
+
+  loginFriendsAccount: (username: string, password: string) => Promise<void>;
+  registerFriendsAccount: (username: string, password: string) => Promise<void>;
+  logoutFriendsAccount: () => Promise<void>;
+}
+
+// Load account from localStorage if exists
+let initialFriendsAccount: { uuid: string; username: string } | null = null;
+try {
+  const saved = localStorage.getItem('prime_friends_account');
+  if (saved) {
+    initialFriendsAccount = JSON.parse(saved);
+  }
+} catch (e) {
+  console.error("Failed to parse initial friends account:", e);
 }
 
 export const useFriendsStore = create<FriendsState>((set, get) => ({
@@ -108,6 +122,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   lastFetchedAt: null,
   intervalId: null,
   launchedServer: null,
+  friendsAccount: initialFriendsAccount,
 
   openSidebar: () => set({ isSidebarOpen: true }),
   closeSidebar: () => set({ isSidebarOpen: false }),
@@ -115,10 +130,112 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   setLaunchedServer: (server) => set({ launchedServer: server }),
 
+  loginFriendsAccount: async (username, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      const usernameLower = username.trim().toLowerCase();
+      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${usernameLower}.json`);
+      const data = await res.json();
+      
+      if (!data) {
+        throw new Error("Username not found");
+      }
+      if (data.password !== password) {
+        throw new Error("Incorrect password");
+      }
+
+      const uuid = data.uuid;
+      const account = { uuid, username: data.username };
+      localStorage.setItem('prime_friends_account', JSON.stringify(account));
+
+      set({ friendsAccount: account, isLoading: false });
+      
+      await get().loadCurrentUser();
+      await get().connectWebSocket();
+    } catch (e: any) {
+      set({ error: e.message || String(e), isLoading: false });
+      throw e;
+    }
+  },
+
+  registerFriendsAccount: async (username, password) => {
+    set({ isLoading: true, error: null });
+    try {
+      const usernameClean = username.trim();
+      const usernameLower = usernameClean.toLowerCase();
+      
+      if (usernameClean.length < 3 || usernameClean.length > 16) {
+        throw new Error("Username must be between 3 and 16 characters");
+      }
+      if (password.length < 3) {
+        throw new Error("Password must be at least 3 characters");
+      }
+
+      // Check if exists
+      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${usernameLower}.json`);
+      const data = await res.json();
+      if (data) {
+        throw new Error("Username is already taken");
+      }
+
+      const uuid = crypto.randomUUID();
+      
+      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${usernameLower}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: usernameClean,
+          password: password,
+          uuid: uuid
+        })
+      });
+
+      const userData = {
+        username: usernameClean,
+        state: 'ONLINE',
+        server: null,
+        lastActive: Date.now(),
+        privacy: {
+          showServer: true,
+          allowRequests: true,
+          allowServerInvites: true
+        }
+      };
+      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${uuid}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+
+      const account = { uuid, username: usernameClean };
+      localStorage.setItem('prime_friends_account', JSON.stringify(account));
+
+      set({ friendsAccount: account, isLoading: false });
+      
+      await get().loadCurrentUser();
+      await get().connectWebSocket();
+    } catch (e: any) {
+      set({ error: e.message || String(e), isLoading: false });
+      throw e;
+    }
+  },
+
+  logoutFriendsAccount: async () => {
+    await get().disconnectWebSocket();
+    localStorage.removeItem('prime_friends_account');
+    set({
+      friendsAccount: null,
+      currentUser: null,
+      friends: [],
+      pendingRequests: [],
+      activeChatFriend: null
+    });
+  },
+
   loadFriends: async (force = false) => {
     const state = get();
     const now = Date.now();
-    const staleTime = 30_000; // 30 seconds
+    const staleTime = 30_000;
 
     if (!force && state.friends.length > 0 && state.lastFetchedAt && (now - state.lastFetchedAt) < staleTime) {
       return;
@@ -126,12 +243,12 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) {
+      const account = get().friendsAccount;
+      if (!account) {
         set({ isLoading: false });
         return;
       }
-      const myUuid = activeAccount.id;
+      const myUuid = account.uuid;
 
       const friendsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}.json`);
       const friendsData = await friendsRes.json();
@@ -174,9 +291,9 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   loadPendingRequests: async () => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) return;
-      const myUuid = activeAccount.id;
+      const account = get().friendsAccount;
+      if (!account) return;
+      const myUuid = account.uuid;
 
       const reqsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}.json`);
       const reqsData = await reqsRes.json();
@@ -205,17 +322,16 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   loadCurrentUser: async () => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) return;
-      const myUuid = activeAccount.id;
-      const myUsername = activeAccount.username;
+      const account = get().friendsAccount;
+      if (!account) return;
+      const myUuid = account.uuid;
 
       const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}.json`);
       let userData = await res.json();
 
       if (!userData) {
         userData = {
-          username: myUsername,
+          username: account.username,
           state: 'ONLINE',
           server: null,
           lastActive: Date.now(),
@@ -235,7 +351,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       set({
         currentUser: {
           uuid: myUuid,
-          username: userData.username || myUsername,
+          username: userData.username || account.username,
           state: userData.state || 'ONLINE',
           server: userData.server || null,
           privacy: userData.privacy || {
@@ -252,16 +368,24 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   sendRequest: async (name: string) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) throw new Error("No active account");
-      const myUuid = activeAccount.id;
-      const myUsername = activeAccount.username;
+      const account = get().friendsAccount;
+      if (!account) throw new Error("Not logged into friends account");
+      const myUuid = account.uuid;
+      const myUsername = account.username;
 
-      const targetUuid = await invoke<string>('resolve_username_to_uuid', { username: name });
-      
-      const targetRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${targetUuid}.json`);
-      const targetData = await targetRes.json();
-      const targetUsername = targetData?.username || name;
+      const nameLower = name.trim().toLowerCase();
+      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${nameLower}.json`);
+      const targetData = await res.json();
+      if (!targetData) {
+        throw new Error("User '" + name + "' not found on the friends network");
+      }
+
+      const targetUuid = targetData.uuid;
+      const targetUsername = targetData.username;
+
+      if (targetUuid === myUuid) {
+        throw new Error("You cannot add yourself as a friend");
+      }
 
       const requestObj = {
         id: targetUuid,
@@ -286,17 +410,17 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       });
 
       await get().loadPendingRequests();
-    } catch (e) {
-      set({ error: String(e) });
+    } catch (e: any) {
+      set({ error: e.message || String(e) });
       throw e;
     }
   },
 
   acceptRequest: async (name: string) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) throw new Error("No active account");
-      const myUuid = activeAccount.id;
+      const account = get().friendsAccount;
+      if (!account) throw new Error("Not logged into friends account");
+      const myUuid = account.uuid;
 
       const request = get().pendingRequests.find(r => 
         r.users.some(u => u.username.toLowerCase() === name.toLowerCase())
@@ -334,9 +458,9 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   denyRequest: async (name: string) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) throw new Error("No active account");
-      const myUuid = activeAccount.id;
+      const account = get().friendsAccount;
+      if (!account) throw new Error("Not logged into friends account");
+      const myUuid = account.uuid;
 
       const request = get().pendingRequests.find(r => 
         r.users.some(u => u.username.toLowerCase() === name.toLowerCase())
@@ -361,9 +485,9 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   removeFriend: async (name: string, uuid: string) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) throw new Error("No active account");
-      const myUuid = activeAccount.id;
+      const account = get().friendsAccount;
+      if (!account) throw new Error("Not logged into friends account");
+      const myUuid = account.uuid;
 
       await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}/${uuid}.json`, { method: 'DELETE' });
       await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${uuid}/${myUuid}.json`, { method: 'DELETE' });
@@ -379,9 +503,9 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   setStatus: async (status: OnlineState) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) throw new Error("No active account");
-      const myUuid = activeAccount.id;
+      const account = get().friendsAccount;
+      if (!account) throw new Error("Not logged into friends account");
+      const myUuid = account.uuid;
 
       await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}/state.json`, {
         method: 'PUT',
@@ -402,9 +526,9 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   togglePing: async (friendName: string) => {
     try {
-      const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (!activeAccount) throw new Error("No active account");
-      const myUuid = activeAccount.id;
+      const account = get().friendsAccount;
+      if (!account) throw new Error("Not logged into friends account");
+      const myUuid = account.uuid;
 
       const friend = get().friends.find(f => f.username === friendName);
       if (!friend) return false;
@@ -442,11 +566,11 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
     const syncLoop = async () => {
       try {
-        const activeAccount = useMinecraftAuthStore.getState().activeAccount;
-        if (!activeAccount) return;
+        const account = get().friendsAccount;
+        if (!account) return;
 
-        const myUuid = activeAccount.id;
-        const myUsername = activeAccount.username;
+        const myUuid = account.uuid;
+        const myUsername = account.username;
 
         const processes = useProcessStore.getState().processes;
         if (processes.length === 0 && get().launchedServer !== null) {
