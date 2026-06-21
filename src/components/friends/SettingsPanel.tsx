@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../../i18n/i18n";
 import { Icon } from "@iconify/react";
@@ -78,6 +78,7 @@ export function SettingsPanel() {
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync edits when user loads or updates
   useEffect(() => {
@@ -86,6 +87,31 @@ export function SettingsPanel() {
       setEditAvatarUrl(currentUser.avatarUrl || "");
     }
   }, [currentUser]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 200 * 1024) {
+      setEditError("Image size must be less than 200KB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setEditAvatarUrl(base64String);
+      setEditError(null);
+    };
+    reader.onerror = () => {
+      setEditError("Failed to read image file");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
   if (!currentUser) {
     return (
@@ -128,7 +154,7 @@ export function SettingsPanel() {
     setIsSaving(true);
     setEditError(null);
     try {
-      await updateFriendsProfile(editUsername, editAvatarUrl);
+      await updateFriendsProfile(editAvatarUrl);
       setIsEditingProfile(false);
       toast.success("Profile updated successfully!");
     } catch (err: any) {
@@ -247,41 +273,86 @@ export function SettingsPanel() {
             <div className="space-y-1">
               <label className="text-[10px] font-minecraft-ten text-white/70 uppercase">Username</label>
               <div
-                className="flex items-center gap-2 rounded-lg border transition-all duration-200 px-3 py-1.5"
+                className="flex items-center gap-2 rounded-lg border px-3 py-1.5 opacity-60"
                 style={{
-                  backgroundColor: "rgba(0,0,0,0.2)",
-                  borderColor: `${accentColor.value}35`
+                  backgroundColor: "rgba(0,0,0,0.3)",
+                  borderColor: `${accentColor.value}20`
                 }}
               >
                 <input
                   type="text"
-                  required
-                  value={editUsername}
-                  onChange={(e) => { setEditUsername(e.target.value); setEditError(null); }}
-                  placeholder="Enter username"
-                  className="flex-1 bg-transparent text-white font-minecraft text-sm focus:outline-none"
-                  disabled={isSaving}
+                  value={currentUser.username}
+                  className="flex-1 bg-transparent text-white/70 font-minecraft text-sm focus:outline-none cursor-not-allowed"
+                  disabled
                 />
               </div>
+              <span className="text-[9px] text-white/30 font-minecraft">
+                Username cannot be changed.
+              </span>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-minecraft-ten text-white/70 uppercase">Avatar URL (Optional)</label>
-              <div
-                className="flex items-center gap-2 rounded-lg border transition-all duration-200 px-3 py-1.5"
+              <label className="text-[10px] font-minecraft-ten text-white/70 uppercase">Profile Picture (File)</label>
+              <div className="flex flex-col items-center gap-3 p-3 rounded-lg border"
                 style={{
                   backgroundColor: "rgba(0,0,0,0.2)",
                   borderColor: `${accentColor.value}35`
                 }}
               >
+                {editAvatarUrl ? (
+                  <div className="relative group">
+                    <img
+                      src={editAvatarUrl}
+                      alt="Avatar Preview"
+                      className="w-16 h-16 rounded-xl object-cover"
+                      style={{
+                        border: `2px solid ${accentColor.value}`,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditAvatarUrl("")}
+                      className="absolute -top-1 -right-1 p-0.5 rounded-full bg-red-500 hover:bg-red-600 text-white cursor-pointer"
+                      title="Remove image"
+                    >
+                      <Icon icon="solar:close-circle-bold" className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="w-16 h-16 rounded-xl flex items-center justify-center cursor-pointer"
+                    style={{
+                      backgroundColor: `${accentColor.value}20`,
+                      border: `2px dashed ${accentColor.value}50`,
+                    }}
+                    onClick={handleUploadClick}
+                  >
+                    <Icon icon="solar:camera-bold" className="w-7 h-7" style={{ color: `${accentColor.value}60` }} />
+                  </div>
+                )}
+                
                 <input
-                  type="url"
-                  value={editAvatarUrl}
-                  onChange={(e) => { setEditAvatarUrl(e.target.value); setEditError(null); }}
-                  placeholder="https://imgur.com/your-image.png"
-                  className="flex-1 bg-transparent text-white font-minecraft text-sm focus:outline-none"
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
                   disabled={isSaving}
                 />
+                
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleUploadClick}
+                    disabled={isSaving}
+                    className="px-3 py-1.5 rounded-lg text-xs font-minecraft-ten bg-white/10 hover:bg-white/20 transition-colors border border-white/20 text-white cursor-pointer"
+                  >
+                    Choose Image File
+                  </button>
+                  <span className="text-[9px] text-white/40 font-minecraft">
+                    PNG, JPG, or WebP. Max size: 200KB.
+                  </span>
+                </div>
               </div>
             </div>
 

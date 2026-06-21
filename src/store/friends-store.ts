@@ -99,7 +99,7 @@ interface FriendsState {
   loginFriendsAccount: (username: string, password: string) => Promise<void>;
   registerFriendsAccount: (username: string, password: string) => Promise<void>;
   logoutFriendsAccount: () => Promise<void>;
-  updateFriendsProfile: (newUsername: string, newAvatarUrl: string) => Promise<void>;
+  updateFriendsProfile: (newAvatarUrl: string) => Promise<void>;
   syncWithMinecraftAccount: (minecraftAccount: any | null) => Promise<void>;
 }
 
@@ -170,6 +170,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       set({ friendsAccount: account, isLoading: false });
       
       await get().loadCurrentUser();
+      await get().setStatus('ONLINE');
       await get().connectWebSocket();
     } catch (e: any) {
       set({ error: e.message || String(e), isLoading: false });
@@ -657,7 +658,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
         const currentLaunchedServer = get().launchedServer;
         const currentUserState = get().currentUser;
-        const currentState = currentUserState?.state || 'ONLINE';
+        let currentState = currentUserState?.state || 'ONLINE';
+        if (currentState === 'OFFLINE') {
+          currentState = 'ONLINE';
+          set((state) => ({
+            currentUser: state.currentUser ? { ...state.currentUser, state: 'ONLINE' } : null
+          }));
+        }
         const currentPrivacy = currentUserState?.privacy || { showServer: true, allowRequests: true, allowServerInvites: true };
 
         if (loopCount % 4 === 0) {
@@ -959,68 +966,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     }
   },
 
-  updateFriendsProfile: async (newUsername: string, newAvatarUrl: string) => {
+  updateFriendsProfile: async (newAvatarUrl: string) => {
     set({ isLoading: true, error: null });
     try {
       const account = get().friendsAccount;
       if (!account) throw new Error("Not logged into friends account");
       
       const myUuid = account.uuid;
-      const oldUsername = account.username;
-      const oldUsernameLower = oldUsername.trim().toLowerCase();
-      
-      const newUsernameClean = newUsername.trim();
-      const newUsernameLower = newUsernameClean.toLowerCase();
-      
-      if (newUsernameClean.length < 3 || newUsernameClean.length > 16) {
-        throw new Error("Username must be between 3 and 16 characters");
-      }
-      const re = /^[a-zA-Z0-9_]+$/;
-      if (!re.test(newUsernameClean)) {
-        throw new Error("Username can only contain letters, numbers, and underscores");
-      }
-      
-      // Fetch old credentials to get the password
-      const oldCredRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${oldUsernameLower}.json`);
-      const oldCredData = await oldCredRes.json();
-      const password = oldCredData?.password || "";
-      
-      if (newUsernameLower !== oldUsernameLower) {
-        const checkRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${newUsernameLower}.json`);
-        const checkData = await checkRes.json();
-        if (checkData && checkData.uuid !== myUuid) {
-          throw new Error("Username is already taken");
-        }
-        
-        // Write new credentials
-        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${newUsernameLower}.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: newUsernameClean,
-            password: password,
-            uuid: myUuid
-          })
-        });
-        
-        // Delete old credentials
-        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${oldUsernameLower}.json`, {
-          method: 'DELETE'
-        });
-      } else {
-        // Just update casing if it changed
-        if (newUsernameClean !== oldUsername) {
-          await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${oldUsernameLower}.json`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: newUsernameClean,
-              password: password,
-              uuid: myUuid
-            })
-          });
-        }
-      }
       
       // Patch user profile
       const cleanAvatarUrl = newAvatarUrl.trim();
@@ -1028,24 +980,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: newUsernameClean,
           avatarUrl: cleanAvatarUrl || null
         })
       });
       
-      // Update local storage and store state
-      const updatedAccount = { uuid: myUuid, username: newUsernameClean };
-      const mcAccount = useMinecraftAuthStore.getState().activeAccount;
-      if (mcAccount) {
-        localStorage.setItem(`prime_friends_account_${mcAccount.id}`, JSON.stringify(updatedAccount));
-      }
-      localStorage.setItem('prime_friends_account', JSON.stringify(updatedAccount));
-      
       set({
-        friendsAccount: updatedAccount,
         currentUser: get().currentUser ? {
           ...get().currentUser!,
-          username: newUsernameClean,
           avatarUrl: cleanAvatarUrl || null
         } : null,
         isLoading: false
@@ -1101,6 +1042,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
           });
           
           await get().loadCurrentUser();
+          await get().setStatus('ONLINE');
           await get().loadFriends(true);
           await get().connectWebSocket();
           set({ isLoading: false });

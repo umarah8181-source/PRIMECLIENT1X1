@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useMemo, useCallback, useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@iconify/react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { useFriendsStore, FriendsFriendUser } from "../../store/friends-store";
 import { useThemeStore } from "../../store/useThemeStore";
 import { useCrafatarAvatar } from "../../hooks/useCrafatarAvatar";
+import { useChatStore } from "../../store/chat-store";
+import { toast } from "react-hot-toast";
 
 function getDateLabel(timestamp: number, t: (key: string) => string): string {
   const date = new Date(timestamp);
@@ -75,236 +75,72 @@ export function ChatPanel({ friend }: ChatPanelProps) {
   const { t } = useTranslation();
   const { accentColor } = useThemeStore();
   const { closeChat, currentUser } = useFriendsStore();
-  const [chat, setChat] = useState<ChatInfo | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  const messages = useChatStore((state) => state.messages);
+  const isLoading = useChatStore((state) => state.isLoading);
   const customAvatarUrl = friend.avatarUrl;
   const crafatarAvatar = useCrafatarAvatar({ uuid: friend.uuid, size: 20 });
   const avatarUrl = customAvatarUrl || crafatarAvatar;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const topSentinelRef = useRef<HTMLDivElement>(null);
-  const scrollDistanceFromBottom = useRef<number>(0);
-  const shouldRestoreScroll = useRef(false);
+
+  const chatId = useMemo(() => {
+    if (!currentUser) return "";
+    const sortedIds = [currentUser.uuid, friend.uuid].sort();
+    return `${sortedIds[0]}_${sortedIds[1]}`;
+  }, [currentUser, friend.uuid]);
 
   useEffect(() => {
     let cancelled = false;
-
     const initChat = async () => {
-      setChat(null);
-      setMessages([]);
-      setIsLoading(true);
-      setIsLoadingMore(false);
-      setHasMore(true);
-      setCurrentPage(1);
+      if (!currentUser || !chatId) return;
+
+      useChatStore.getState().setActiveChat(
+        { _id: chatId, participants: [] },
+        friend
+      );
 
       try {
-        const chatData = await invoke<ChatInfo>("get_or_create_chat", {
-          friendUuid: friend.uuid,
-        });
+        await useChatStore.getState().loadMessages(chatId);
         if (cancelled) return;
-        setChat(chatData);
-
-        const messagesData = await invoke<Message[]>("get_chat_messages", {
-          chatId: chatData._id,
-          page: 1,
-        });
-        if (cancelled) return;
-
-        if (messagesData.length < MESSAGES_PER_PAGE) {
-          setHasMore(false);
-        }
-
-        const sorted = [...messagesData].sort((a, b) => {
-          const timeA = a.createdAt || a.sentAt || a.timestamp || 0;
-          const timeB = b.createdAt || b.sentAt || b.timestamp || 0;
-          return timeA - timeB;
-        });
-        setMessages(sorted);
-
         requestAnimationFrame(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
         });
       } catch (e) {
-        console.error("Failed to init chat:", e);
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        console.error("Failed to load messages:", e);
       }
     };
 
     initChat();
-    return () => { cancelled = true; };
-  }, [friend.uuid]);
-
-  useEffect(() => {
-    if (!chat?._id) return;
-
-    const unlistenMessage = listen<Message>(
-      "chat:message_received",
-      (event) => {
-        const msg = event.payload;
-        if (msg.chatId === chat._id && msg._id) {
-          setMessages((prev) => {
-            if (prev.some((m) => m._id === msg._id)) {
-              return prev;
-            }
-            return [...prev, msg];
-          });
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-          }, 50);
-        }
-      }
-    );
-
-    const unlistenMessageUpdated = listen<Message>(
-      "chat:message_updated",
-      (event) => {
-        if (event.payload.chatId === chat._id) {
-          setMessages((prev) => {
-            const exists = prev.some((m) => m._id === event.payload._id);
-            if (exists) {
-              return prev.map((m) =>
-                m._id === event.payload._id ? event.payload : m
-              );
-            }
-            return [...prev, event.payload];
-          });
-        }
-      }
-    );
-
     return () => {
-      unlistenMessage.then((fn) => fn());
-      unlistenMessageUpdated.then((fn) => fn());
+      cancelled = true;
+      useChatStore.getState().clearActiveChat();
     };
-  }, [chat?._id]);
+  }, [chatId, currentUser, friend]);
 
-  const loadMoreMessages = useCallback(async () => {
-    if (!chat || isLoadingMore || !hasMore) return;
-
-    // Store distance from bottom to restore scroll position later
-    const container = messagesContainerRef.current;
-    if (container) {
-      scrollDistanceFromBottom.current = container.scrollHeight - container.scrollTop;
-    }
-
-    setIsLoadingMore(true);
-
-    try {
-      const nextPage = currentPage + 1;
-      const messagesData = await invoke<Message[]>("get_chat_messages", {
-        chatId: chat._id,
-        page: nextPage,
-      });
-
-      if (messagesData.length === 0) {
-        setHasMore(false);
-        setIsLoadingMore(false);
-        return;
-      }
-
-      if (messagesData.length < MESSAGES_PER_PAGE) {
-        setHasMore(false);
-      }
-
-      setCurrentPage(nextPage);
-
-      const existingIds = new Set(messages.map((m) => m._id));
-      const newMessages = messagesData.filter((m) => !existingIds.has(m._id));
-
-      if (newMessages.length === 0) {
-        setHasMore(false);
-        setIsLoadingMore(false);
-        return;
-      }
-
-      const merged = [...newMessages, ...messages].sort((a, b) => {
-        const timeA = a.createdAt || a.sentAt || a.timestamp || 0;
-        const timeB = b.createdAt || b.sentAt || b.timestamp || 0;
-        return timeA - timeB;
-      });
-
-      shouldRestoreScroll.current = true;
-      setMessages(merged);
-    } catch (e) {
-      console.error("Failed to load more messages:", e);
-      setIsLoadingMore(false);
-    }
-  }, [chat, isLoadingMore, hasMore, currentPage, messages]);
-
-  // Restore scroll position synchronously before paint (bottom anchoring)
-  useLayoutEffect(() => {
-    if (!shouldRestoreScroll.current) return;
-
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    container.scrollTop = container.scrollHeight - scrollDistanceFromBottom.current;
-
-    shouldRestoreScroll.current = false;
-    scrollDistanceFromBottom.current = 0;
-    setIsLoadingMore(false);
-  }, [messages]);
-
-  const lastLoadTimeRef = useRef(0);
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    const now = Date.now();
-    if (target.scrollTop < 100 && hasMore && !isLoadingMore && now - lastLoadTimeRef.current > 500) {
-      lastLoadTimeRef.current = now;
-      loadMoreMessages();
-    }
-  }, [hasMore, isLoadingMore, loadMoreMessages]);
-
-  // IntersectionObserver for loading more messages when top sentinel is visible
   useEffect(() => {
-    const sentinel = topSentinelRef.current;
-    if (!sentinel || !hasMore || isLoading) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
-          loadMoreMessages();
-        }
-      },
-      {
-        root: messagesContainerRef.current,
-        rootMargin: "100px 0px 0px 0px",
-        threshold: 0,
-      }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, isLoading, loadMoreMessages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   const handleSend = async (content: string) => {
-    if (!chat) return;
-
+    if (!chatId) return;
     try {
-      const sentMessage = await invoke<Message>("send_chat_message", {
-        chatId: chat._id,
-        content,
-      });
-
-      // Add message to local list immediately (don't wait for WebSocket)
-      setMessages((prev) => {
-        if (prev.some((m) => m._id === sentMessage._id)) {
-          return prev;
-        }
-        return [...prev, sentMessage];
-      });
-
-      // Scroll to bottom
+      await useChatStore.getState().sendMessage(chatId, content);
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 50);
     } catch (e) {
       console.error("Failed to send message:", e);
+    }
+  };
+
+  const handleInviteToServer = async () => {
+    if (currentUser?.server && chatId) {
+      try {
+        await useChatStore.getState().sendMessage(chatId, `__INVITE__:${currentUser.server}`);
+        toast.success(`Sent server invite for ${currentUser.server}`);
+      } catch (e) {
+        console.error("Failed to send invite:", e);
+      }
     }
   };
 
@@ -416,21 +252,37 @@ export function ChatPanel({ friend }: ChatPanelProps) {
             {friend.username}
           </span>
         </div>
-        <button
-          onClick={closeChat}
-          className="p-1.5 rounded-lg transition-all duration-200"
-          style={{
-            backgroundColor: `${accentColor.value}20`,
-            color: accentColor.value,
-          }}
-        >
-          <Icon icon="solar:close-circle-bold" className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {currentUser?.server && (
+            <button
+              onClick={handleInviteToServer}
+              className="p-1.5 rounded-lg transition-all duration-200 flex items-center gap-1 cursor-pointer"
+              style={{
+                backgroundColor: `${accentColor.value}20`,
+                border: `1px solid ${accentColor.value}40`,
+                color: accentColor.value,
+              }}
+              title="Invite Friend to your Server"
+            >
+              <Icon icon="solar:letter-opened-bold" className="w-4 h-4" />
+              <span className="text-[10px] font-minecraft-ten">Invite</span>
+            </button>
+          )}
+          <button
+            onClick={closeChat}
+            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer"
+            style={{
+              backgroundColor: `${accentColor.value}20`,
+              color: accentColor.value,
+            }}
+          >
+            <Icon icon="solar:close-circle-bold" className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div
         ref={messagesContainerRef}
-        onScroll={handleScroll}
         className="flex-1 overflow-y-auto py-3 custom-scrollbar flex flex-col"
       >
         {messages.length === 0 ? (
@@ -455,24 +307,6 @@ export function ChatPanel({ friend }: ChatPanelProps) {
           <>
             {/* Spacer to push content to bottom */}
             <div className="flex-1" />
-            {/* Top sentinel for IntersectionObserver */}
-            <div ref={topSentinelRef} className="h-1" />
-            {isLoadingMore && (
-              <div className="flex justify-center py-3">
-                <Icon
-                  icon="solar:refresh-linear"
-                  className="w-5 h-5 animate-spin"
-                  style={{ color: accentColor.value }}
-                />
-              </div>
-            )}
-            {!hasMore && !isLoadingMore && (
-              <div className="flex justify-center py-2">
-                <span className="text-xs font-minecraft-ten text-white/30">
-                  {t('chat.start_of_conversation')}
-                </span>
-              </div>
-            )}
             {messages.filter((m) => m != null).map((message, index, arr) => {
               const timestamp = message.createdAt || message.sentAt || message.timestamp || 0;
               const prevMessage = arr[index - 1];

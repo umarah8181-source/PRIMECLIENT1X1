@@ -7,6 +7,9 @@ import { useThemeStore } from "../../store/useThemeStore";
 import { useCrafatarAvatar } from "../../hooks/useCrafatarAvatar";
 import { NotificationBadge } from "../ui/NotificationBadge";
 import { cn } from "../../lib/utils";
+import { useProfileStore } from "../../store/profile-store";
+import { useProfileLaunch } from "../../hooks/useProfileLaunch";
+import { toast } from "react-hot-toast";
 
 interface FriendListItemProps {
   friend: FriendsFriendUser;
@@ -27,6 +30,32 @@ export const FriendListItem = memo(function FriendListItem({ friend }: FriendLis
   const { accentColor } = useThemeStore();
   const [isRemoving, setIsRemoving] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+
+  const { selectedProfile, profiles } = useProfileStore();
+  const activeProfile = selectedProfile || profiles[0];
+
+  const { handleQuickPlayLaunch, isLaunching } = useProfileLaunch({
+    profileId: activeProfile?.id || "",
+    onLaunchSuccess: () => {
+      if (friend.server) {
+        useFriendsStore.getState().setLaunchedServer(friend.server);
+      }
+    }
+  });
+
+  const handleJoinServer = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!friend.server) return;
+    
+    if (!activeProfile) {
+      toast.error(t('launcher.no_profiles_found') || "No Minecraft profiles found. Please create one first.");
+      return;
+    }
+    
+    toast.success(t('profiles.toast.joining_server', { name: friend.server }) || `Joining server ${friend.server}...`);
+    useFriendsStore.getState().setLaunchedServer(friend.server);
+    handleQuickPlayLaunch(undefined, friend.server);
+  };
   const customAvatarUrl = friend.avatarUrl;
   const crafatarAvatar = useCrafatarAvatar({ uuid: friend.uuid, size: 48 });
   const avatarUrl = customAvatarUrl || crafatarAvatar;
@@ -178,6 +207,33 @@ export const FriendListItem = memo(function FriendListItem({ friend }: FriendLis
       </div>
 
       <div className="flex items-center gap-1.5">
+        {friend.server && friend.state !== 'OFFLINE' && (
+          <button
+            onClick={handleJoinServer}
+            disabled={isLaunching}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-110 flex items-center justify-center cursor-pointer"
+            style={{
+              backgroundColor: `${accentColor.value}20`,
+              border: `1px solid ${accentColor.value}40`,
+              color: accentColor.value,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = `${accentColor.value}40`;
+              e.currentTarget.style.borderColor = `${accentColor.value}70`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = `${accentColor.value}20`;
+              e.currentTarget.style.borderColor = `${accentColor.value}40`;
+            }}
+            title={t('friends.join_server') || "Join Server"}
+          >
+            {isLaunching ? (
+              <Icon icon="solar:refresh-bold" className="w-5 h-5 animate-spin" />
+            ) : (
+              <Icon icon="solar:gamepad-bold" className="w-5 h-5" />
+            )}
+          </button>
+        )}
         <div className="relative">
           <button
             onClick={(e) => {
