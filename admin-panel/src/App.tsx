@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send, Users, Shield } from "lucide-react";
+import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send, Users } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface MinecraftServer {
@@ -21,17 +21,11 @@ const DATABASE_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.fi
 const NOTIFICATIONS_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/notifications.json";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"servers" | "notifications" | "updates" | "active-users" | "ranks">("servers");
+  const [activeTab, setActiveTab] = useState<"servers" | "notifications" | "updates" | "active-users">("servers");
   
   // Active Users State
   const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  
-  // Ranks State
-  const [ranksList, setRanksList] = useState<Record<string, string>>({});
-  const [rankUsername, setRankUsername] = useState("");
-  const [rankValue, setRankValue] = useState("member");
-  const [loadingRanks, setLoadingRanks] = useState(false);
   
   // Servers State
   const [servers, setServers] = useState<MinecraftServer[]>([]);
@@ -308,75 +302,12 @@ export default function App() {
     }
   };
 
-  const fetchRanks = async () => {
-    setLoadingRanks(true);
-    try {
-      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/ranks.json");
-      if (!response.ok) throw new Error("Failed to fetch ranks");
-      const data = await response.json();
-      setRanksList(data || {});
-    } catch (err) {
-      console.error(err);
-      showNotification("error", "Failed to load player ranks.");
-    } finally {
-      setLoadingRanks(false);
-    }
-  };
-
-  const handleSaveRank = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rankUsername.trim()) {
-      showNotification("error", "Username cannot be empty");
-      return;
-    }
-    const cleanUsername = rankUsername.trim();
-    const lowercaseUsername = cleanUsername.toLowerCase();
-    
-    setLoadingRanks(true);
-    try {
-      const response = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/ranks/${lowercaseUsername}.json`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(rankValue)
-      });
-      if (!response.ok) throw new Error("Failed to save rank");
-      
-      showNotification("success", `Rank '${rankValue}' assigned to '${cleanUsername}' successfully!`);
-      setRankUsername("");
-      fetchRanks();
-    } catch (err) {
-      console.error(err);
-      showNotification("error", "Failed to assign player rank.");
-    } finally {
-      setLoadingRanks(false);
-    }
-  };
-
-  const handleDeleteRank = async (username: string) => {
-    setLoadingRanks(true);
-    try {
-      const response = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/ranks/${username.toLowerCase()}.json`, {
-        method: "DELETE"
-      });
-      if (!response.ok) throw new Error("Failed to delete rank");
-      
-      showNotification("success", `Rank removed for user '${username}'`);
-      fetchRanks();
-    } catch (err) {
-      console.error(err);
-      showNotification("error", "Failed to remove player rank.");
-    } finally {
-      setLoadingRanks(false);
-    }
-  };
-
   useEffect(() => {
     fetchServers();
     fetchNotifications();
     fetchCurrentUpdateInfo();
     loadGithubConfig();
     fetchActiveUsers();
-    fetchRanks();
 
     // Poll active users every 15 seconds to keep count accurate
     const interval = setInterval(fetchActiveUsers, 15000);
@@ -581,20 +512,12 @@ export default function App() {
             Active Users ({activeUsersCount !== null ? activeUsersCount : 0})
           </button>
           <button 
-            className={`btn ${activeTab === "ranks" ? "btn-primary" : "btn-secondary"}`}
-            onClick={() => setActiveTab("ranks")}
-            style={{ width: "auto", padding: "0.5rem 1rem" }}
-          >
-            <Shield size={16} />
-            Player Ranks
-          </button>
-          <button 
             className="btn btn-secondary" 
-            onClick={activeTab === "servers" ? fetchServers : activeTab === "notifications" ? fetchNotifications : activeTab === "active-users" ? fetchActiveUsers : activeTab === "ranks" ? fetchRanks : fetchCurrentUpdateInfo} 
-            disabled={loading || notifLoading || uploadingUpdate || loadingUsers || loadingRanks} 
+            onClick={activeTab === "servers" ? fetchServers : activeTab === "notifications" ? fetchNotifications : activeTab === "active-users" ? fetchActiveUsers : fetchCurrentUpdateInfo} 
+            disabled={loading || notifLoading || uploadingUpdate || loadingUsers} 
             style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <RotateCcw size={16} className={(loading || notifLoading || uploadingUpdate || loadingUsers || loadingRanks) ? "animate-spin" : ""} />
+            <RotateCcw size={16} className={(loading || notifLoading || uploadingUpdate || loadingUsers) ? "animate-spin" : ""} />
             Refresh
           </button>
         </div>
@@ -1066,129 +989,6 @@ export default function App() {
         </div>
       )}
 
-      {activeTab === "ranks" && (
-        <div className="glass-panel" style={{ maxWidth: "800px", margin: "0 auto" }}>
-          <h2>
-            <Shield size={20} />
-            Player Ranks Manager
-          </h2>
-          <p style={{ color: "rgba(255, 255, 255, 0.6)", marginBottom: "1.5rem" }}>
-            Assign specific ranks to client usernames. Normal users have no ranks and no badges display.
-          </p>
-
-          <form onSubmit={handleSaveRank} style={{ display: "flex", gap: "15px", alignItems: "flex-end", marginBottom: "2rem", flexWrap: "wrap", padding: "1.25rem", background: "rgba(255, 255, 255, 0.05)", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-            <div style={{ flex: 1, minWidth: "200px" }}>
-              <label style={{ display: "block", color: "rgba(255, 255, 255, 0.7)", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-                Username
-              </label>
-              <input
-                type="text"
-                value={rankUsername}
-                onChange={(e) => setRankUsername(e.target.value)}
-                placeholder="Enter client username"
-                className="input"
-                style={{ width: "100%", height: "42px", padding: "0 0.75rem", borderRadius: "5px", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.2)", color: "#fff" }}
-                required
-              />
-            </div>
-            
-            <div style={{ width: "180px" }}>
-              <label style={{ display: "block", color: "rgba(255, 255, 255, 0.7)", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-                Rank
-              </label>
-              <select
-                value={rankValue}
-                onChange={(e) => setRankValue(e.target.value)}
-                className="input"
-                style={{ width: "100%", background: "#1a1a1a", border: "1px solid rgba(255, 255, 255, 0.2)", color: "#fff", height: "42px", padding: "0 0.5rem", borderRadius: "5px" }}
-              >
-                <option value="owner">Owner</option>
-                <option value="admin">Admin</option>
-                <option value="developer">Developer</option>
-                <option value="member">Member</option>
-              </select>
-            </div>
-
-            <button type="submit" className="btn btn-primary" style={{ height: "42px", padding: "0 1.5rem" }} disabled={loadingRanks}>
-              <Plus size={16} />
-              Assign Rank
-            </button>
-          </form>
-
-          {loadingRanks ? (
-            <div style={{ textAlign: "center", padding: "3rem" }}>
-              <RotateCcw className="animate-spin" size={24} />
-              <p style={{ marginTop: "0.5rem" }}>Syncing player ranks...</p>
-            </div>
-          ) : Object.keys(ranksList).length === 0 ? (
-            <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255, 255, 255, 0.4)" }}>
-              No custom player ranks assigned yet.
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)", textAlign: "left" }}>
-                    <th style={{ padding: "0.75rem 1rem" }}>Username</th>
-                    <th style={{ padding: "0.75rem 1rem" }}>Rank</th>
-                    <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(ranksList).map(([username, rank]) => (
-                    <tr key={username} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                      <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{username}</td>
-                      <td style={{ padding: "0.75rem 1rem" }}>
-                        <span style={{ 
-                          padding: "0.2rem 0.6rem", 
-                          borderRadius: "4px", 
-                          fontSize: "0.75rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          background: 
-                            rank === "owner" ? "rgba(239, 68, 68, 0.2)" :
-                            rank === "admin" ? "rgba(249, 115, 22, 0.2)" :
-                            rank === "developer" ? "rgba(168, 85, 247, 0.2)" :
-                            "rgba(59, 130, 246, 0.2)",
-                          color: 
-                            rank === "owner" ? "#ef4444" :
-                            rank === "admin" ? "#f97316" :
-                            rank === "developer" ? "#a855f7" :
-                            "#3b82f6",
-                          border: 
-                            rank === "owner" ? "1px solid rgba(239, 68, 68, 0.4)" :
-                            rank === "admin" ? "1px solid rgba(249, 115, 22, 0.4)" :
-                            rank === "developer" ? "1px solid rgba(168, 85, 247, 0.4)" :
-                            "1px solid rgba(59, 130, 246, 0.4)"
-                        }}>
-                          {rank}
-                        </span>
-                      </td>
-                      <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>
-                        <button
-                          onClick={() => handleDeleteRank(username)}
-                          className="btn btn-secondary"
-                          style={{
-                            padding: "0.35rem",
-                            width: "auto",
-                            borderColor: "rgba(239, 68, 68, 0.4)",
-                            color: "#ef4444"
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                          title="Remove Rank"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

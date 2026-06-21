@@ -294,7 +294,7 @@ export function App() {
 
     const timer = setTimeout(checkUpdatesOnStart, 2000);
     return () => clearTimeout(timer);
-  }, [showModal, hideModal]);
+  }, []);
 
   useEffect(() => {
     if (analyticsConsent.decision !== 'accepted' || launcherStartTracked) return;

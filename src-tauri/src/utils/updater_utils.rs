@@ -252,10 +252,7 @@ pub async fn download_and_install_update(
         .ok_or_else(|| AppError::Other("No download URL in update info".to_string()))?;
     let download_url = convert_gdrive_url(&raw_download_url);
 
-    let is_github_release = download_url.contains("github.com") && download_url.contains("/releases/download/");
-    if is_github_release {
-        info!("[Download] GitHub Release asset URL detected: {}", download_url);
-    }
+
 
 
     let temp_dir = std::env::temp_dir();
@@ -371,18 +368,7 @@ pub async fn download_and_install_update(
                 info!("[Download] Direct file stream returned immediately (small file).");
                 res
             }
-        } else if is_github_release {
-            info!("[Download] Downloading from GitHub Release with Accept: application/octet-stream");
-            let res = client
-                .get(&download_url)
-                .header("Accept", "application/octet-stream")
-                .send()
-                .await
-                .map_err(|e| AppError::Other(format!("Failed to start GitHub download: {}", e)))?;
-            if !res.status().is_success() {
-                return Err(AppError::Other(format!("GitHub download returned status {}", res.status())));
-            }
-            res
+
         } else {
             client
                 .get(&download_url)
