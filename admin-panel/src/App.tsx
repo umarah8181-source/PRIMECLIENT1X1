@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send, Users } from "lucide-react";
+import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send, Users, Settings } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface MinecraftServer {
@@ -21,11 +21,15 @@ const DATABASE_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.fi
 const NOTIFICATIONS_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/notifications.json";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"servers" | "notifications" | "updates" | "active-users">("servers");
+  const [activeTab, setActiveTab] = useState<"servers" | "notifications" | "updates" | "active-users" | "settings">("servers");
   
   // Active Users State
   const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Theme Settings State
+  const [christmasThemeUnlocked, setChristmasThemeUnlocked] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(false);
   
   // Servers State
   const [servers, setServers] = useState<MinecraftServer[]>([]);
@@ -302,12 +306,47 @@ export default function App() {
     }
   };
 
+  const fetchThemeSettings = async () => {
+    setLoadingSettings(true);
+    try {
+      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/config/christmasThemeUnlocked.json");
+      if (!response.ok) throw new Error("Failed to fetch settings");
+      const data = await response.json();
+      setChristmasThemeUnlocked(!!data);
+    } catch (err) {
+      console.error("Failed to load theme settings:", err);
+      showNotification("error", "Failed to load theme settings");
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleToggleChristmasTheme = async (newValue: boolean) => {
+    setLoadingSettings(true);
+    try {
+      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/config/christmasThemeUnlocked.json", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newValue),
+      });
+      if (!response.ok) throw new Error("Failed to update theme settings");
+      setChristmasThemeUnlocked(newValue);
+      showNotification("success", `Christmas theme has been ${newValue ? "unlocked" : "locked"}!`);
+    } catch (err) {
+      console.error("Failed to update theme settings:", err);
+      showNotification("error", "Failed to save theme settings");
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
   useEffect(() => {
     fetchServers();
     fetchNotifications();
     fetchCurrentUpdateInfo();
     loadGithubConfig();
     fetchActiveUsers();
+    fetchThemeSettings();
 
     // Poll active users every 15 seconds to keep count accurate
     const interval = setInterval(fetchActiveUsers, 15000);
@@ -512,12 +551,20 @@ export default function App() {
             Active Users ({activeUsersCount !== null ? activeUsersCount : 0})
           </button>
           <button 
-            className="btn btn-secondary" 
-            onClick={activeTab === "servers" ? fetchServers : activeTab === "notifications" ? fetchNotifications : activeTab === "active-users" ? fetchActiveUsers : fetchCurrentUpdateInfo} 
-            disabled={loading || notifLoading || uploadingUpdate || loadingUsers} 
+            className={`btn ${activeTab === "settings" ? "btn-primary" : "btn-secondary"}`}
+            onClick={() => setActiveTab("settings")}
             style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <RotateCcw size={16} className={(loading || notifLoading || uploadingUpdate || loadingUsers) ? "animate-spin" : ""} />
+            <Settings size={16} />
+            Settings
+          </button>
+          <button 
+            className="btn btn-secondary" 
+            onClick={activeTab === "servers" ? fetchServers : activeTab === "notifications" ? fetchNotifications : activeTab === "active-users" ? fetchActiveUsers : activeTab === "settings" ? fetchThemeSettings : fetchCurrentUpdateInfo} 
+            disabled={loading || notifLoading || uploadingUpdate || loadingUsers || loadingSettings} 
+            style={{ width: "auto", padding: "0.5rem 1rem" }}
+          >
+            <RotateCcw size={16} className={(loading || notifLoading || uploadingUpdate || loadingUsers || loadingSettings) ? "animate-spin" : ""} />
             Refresh
           </button>
         </div>
@@ -983,6 +1030,58 @@ export default function App() {
               <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", background: "rgba(255, 255, 255, 0.05)", padding: "0.5rem 1.25rem", borderRadius: "20px", fontSize: "0.9rem", color: "rgba(255, 255, 255, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
                 <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#34d399", display: "inline-block", boxShadow: "0 0 8px #34d399" }}></span>
                 Live Client Count
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "settings" && (
+        <div className="glass-panel" style={{ maxWidth: "600px", margin: "0 auto" }}>
+          <h2>
+            <Settings size={20} />
+            Client Configuration Settings
+          </h2>
+          <p style={{ color: "rgba(255, 255, 255, 0.6)", marginBottom: "2rem" }}>
+            Manage launcher configuration flags and unlock special client features remotely.
+          </p>
+
+          {loadingSettings ? (
+            <div style={{ textAlign: "center", padding: "3rem" }}>
+              <RotateCcw className="animate-spin" size={24} />
+              <p style={{ marginTop: "0.5rem" }}>Loading settings...</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <div 
+                style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center", 
+                  padding: "1.25rem", 
+                  background: "rgba(255, 255, 255, 0.03)", 
+                  borderRadius: "8px", 
+                  border: "1px solid rgba(255, 255, 255, 0.08)" 
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "1.1rem", color: "#fff", marginBottom: "0.25rem" }}>
+                    Christmas Theme Background
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.5)" }}>
+                    When enabled, the Christmas theme is unlocked for all clients.
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <button
+                    onClick={() => handleToggleChristmasTheme(!christmasThemeUnlocked)}
+                    className={`btn ${christmasThemeUnlocked ? "btn-danger" : "btn-primary"}`}
+                    style={{ width: "auto", padding: "0.5rem 1.5rem" }}
+                  >
+                    {christmasThemeUnlocked ? "Lock Theme" : "Unlock Theme"}
+                  </button>
+                </div>
               </div>
             </div>
           )}

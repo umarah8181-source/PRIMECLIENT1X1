@@ -24,6 +24,7 @@ import { TermsOfServiceModal, AnalyticsConsentBanner } from "./components/modals
 import { GlobalModalPortal } from "./components/ui/GlobalModalPortal";
 import { useCrashModalStore } from "./store/crash-modal-store";
 import { useThemeStore } from "./store/useThemeStore";
+import { useLauncherThemeStore } from "./store/launcher-theme-store";
 import { useGlobalModal } from "./hooks/useGlobalModal";
 import { Modal } from "./components/ui/Modal";
 import { refreshNrcDataOnMount } from "./services/nrc-service";
@@ -271,6 +272,7 @@ export function App() {
 
   useEffect(() => {
     refreshNrcDataOnMount();
+    useLauncherThemeStore.getState().fetchRemoteThemeStatus().catch(console.error);
   }, []);
 
   useEffect(() => {

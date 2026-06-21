@@ -41,12 +41,15 @@ interface LauncherThemeState {
   openedAdventDoors: number[];
   // Original accent color before theme was applied (to restore when deselecting)
   originalAccentColor: AccentColor | null;
+  // Remote Christmas theme unlock state
+  christmasThemeUnlocked: boolean;
   // Actions
   selectTheme: (themeId: string | null) => void;
   markAdventDoorOpened: (day: number) => void;
   isThemeUnlocked: (themeId: string) => boolean;
   setOriginalAccentColor: (color: AccentColor | null) => void;
   getSelectedTheme: () => LauncherTheme | null;
+  fetchRemoteThemeStatus: () => Promise<void>;
 }
 
 export const useLauncherThemeStore = create<LauncherThemeState>()(
@@ -55,6 +58,7 @@ export const useLauncherThemeStore = create<LauncherThemeState>()(
       selectedThemeId: null,
       openedAdventDoors: [],
       originalAccentColor: null,
+      christmasThemeUnlocked: false,
 
       selectTheme: (themeId: string | null) => {
         set({ selectedThemeId: themeId });
@@ -72,6 +76,10 @@ export const useLauncherThemeStore = create<LauncherThemeState>()(
       },
 
       isThemeUnlocked: (themeId: string) => {
+        if (themeId === "christmas_theme" && get().christmasThemeUnlocked) {
+          return true;
+        }
+
         const theme = LAUNCHER_THEMES[themeId];
         if (!theme) return false;
 
@@ -95,6 +103,18 @@ export const useLauncherThemeStore = create<LauncherThemeState>()(
         const { selectedThemeId } = get();
         if (!selectedThemeId) return null;
         return LAUNCHER_THEMES[selectedThemeId] || null;
+      },
+
+      fetchRemoteThemeStatus: async () => {
+        try {
+          const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/config/christmasThemeUnlocked.json");
+          if (response.ok) {
+            const data = await response.json();
+            set({ christmasThemeUnlocked: !!data });
+          }
+        } catch (err) {
+          console.error("Failed to fetch remote theme status:", err);
+        }
       },
     }),
     {
