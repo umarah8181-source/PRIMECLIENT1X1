@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send } from "lucide-react";
+import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send, Users } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface MinecraftServer {
@@ -21,7 +21,12 @@ const DATABASE_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.fi
 const NOTIFICATIONS_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/notifications.json";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"servers" | "notifications" | "updates">("servers");
+  const [activeTab, setActiveTab] = useState<"servers" | "notifications" | "updates" | "active-users">("servers");
+  
+  // Active Users State
+  const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null);
+  const [activeUsersList, setActiveUsersList] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   
   // Servers State
   const [servers, setServers] = useState<MinecraftServer[]>([]);
@@ -259,11 +264,56 @@ export default function App() {
     }
   };
 
+  const fetchActiveUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users.json");
+      if (!response.ok) throw new Error("Failed to fetch users");
+      const data = await response.json();
+      if (data) {
+        const now = Date.now();
+        const activeList: any[] = [];
+        Object.entries(data).forEach(([uuid, val]: [string, any]) => {
+          if (val && typeof val === "object") {
+            const isOnline = val.state === "ONLINE" || val.state === "PLAYING";
+            const wasActiveRecently = val.lastActive && (now - val.lastActive <= 45000);
+            if (isOnline || wasActiveRecently) {
+              activeList.push({
+                uuid,
+                username: val.username || "Unknown",
+                state: val.state || "ONLINE",
+                lastActive: val.lastActive || 0,
+              });
+            }
+          }
+        });
+        activeList.sort((a, b) => {
+          if (a.state === "PLAYING" && b.state !== "PLAYING") return -1;
+          if (a.state !== "PLAYING" && b.state === "PLAYING") return 1;
+          return a.username.localeCompare(b.username);
+        });
+        setActiveUsersList(activeList);
+        setActiveUsersCount(activeList.length);
+      } else {
+        setActiveUsersList([]);
+        setActiveUsersCount(0);
+      }
+    } catch (err) {
+      console.error("Failed to load active users:", err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     fetchServers();
     fetchNotifications();
     fetchCurrentUpdateInfo();
     loadGithubConfig();
+    fetchActiveUsers();
+
+    // Poll active users every 15 seconds to keep count accurate
+    const interval = setInterval(fetchActiveUsers, 15000);
 
     let unlistenProgress: (() => void) | null = null;
     const setupListener = async () => {
@@ -279,6 +329,7 @@ export default function App() {
     setupListener();
 
     return () => {
+      clearInterval(interval);
       if (unlistenProgress) {
         unlistenProgress();
       }
@@ -411,6 +462,24 @@ export default function App() {
         <h1>
           <Server size={32} style={{ color: "#3b82f6" }} />
           Prime Client Admin <span>v1.0</span>
+          {activeUsersCount !== null && (
+            <span style={{ 
+              fontSize: "0.85rem", 
+              color: "#34d399", 
+              background: "rgba(52, 211, 153, 0.1)", 
+              padding: "0.25rem 0.75rem", 
+              borderRadius: "9999px", 
+              marginLeft: "1rem", 
+              display: "inline-flex", 
+              alignItems: "center", 
+              gap: "0.25rem",
+              fontWeight: 600,
+              verticalAlign: "middle"
+            }}>
+              <span className="pulse-indicator" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#34d399", display: "inline-block" }}></span>
+              {activeUsersCount} Active Users
+            </span>
+          )}
         </h1>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <button 
@@ -438,12 +507,20 @@ export default function App() {
             Client Updates
           </button>
           <button 
-            className="btn btn-secondary" 
-            onClick={activeTab === "servers" ? fetchServers : activeTab === "notifications" ? fetchNotifications : fetchCurrentUpdateInfo} 
-            disabled={loading || notifLoading || uploadingUpdate} 
+            className={`btn ${activeTab === "active-users" ? "btn-primary" : "btn-secondary"}`}
+            onClick={() => setActiveTab("active-users")}
             style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <RotateCcw size={16} className={(loading || notifLoading || uploadingUpdate) ? "animate-spin" : ""} />
+            <Users size={16} />
+            Active Users ({activeUsersCount !== null ? activeUsersCount : 0})
+          </button>
+          <button 
+            className="btn btn-secondary" 
+            onClick={activeTab === "servers" ? fetchServers : activeTab === "notifications" ? fetchNotifications : activeTab === "active-users" ? fetchActiveUsers : fetchCurrentUpdateInfo} 
+            disabled={loading || notifLoading || uploadingUpdate || loadingUsers} 
+            style={{ width: "auto", padding: "0.5rem 1rem" }}
+          >
+            <RotateCcw size={16} className={(loading || notifLoading || uploadingUpdate || loadingUsers) ? "animate-spin" : ""} />
             Refresh
           </button>
         </div>
@@ -882,6 +959,63 @@ export default function App() {
               <div className="empty-state">No active client update information found in Firebase. Publish one to initialize!</div>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === "active-users" && (
+        <div className="glass-panel" style={{ maxWidth: "800px", margin: "0 auto" }}>
+          <h2>
+            <Users size={20} />
+            Active Users Online ({activeUsersCount !== null ? activeUsersCount : 0})
+          </h2>
+          <p style={{ color: "rgba(255, 255, 255, 0.6)", marginBottom: "1.5rem" }}>
+            Currently active players using the Prime Client launcher. Heartbeats are received every 15-30 seconds.
+          </p>
+          
+          {loadingUsers ? (
+            <div style={{ textAlign: "center", padding: "3rem" }}>
+              <RotateCcw className="animate-spin" size={24} />
+              <p style={{ marginTop: "0.5rem" }}>Loading active users...</p>
+            </div>
+          ) : activeUsersList.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "3rem", color: "rgba(255, 255, 255, 0.4)" }}>
+              No active users online right now.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)", textAlign: "left" }}>
+                    <th style={{ padding: "0.75rem 1rem" }}>Username</th>
+                    <th style={{ padding: "0.75rem 1rem" }}>Status</th>
+                    <th style={{ padding: "0.75rem 1rem" }}>Last Active</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeUsersList.map((user) => (
+                    <tr key={user.uuid} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}>
+                      <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{user.username}</td>
+                      <td style={{ padding: "0.75rem 1rem" }}>
+                        <span style={{ 
+                          padding: "0.2rem 0.5rem", 
+                          borderRadius: "4px", 
+                          fontSize: "0.8rem",
+                          background: user.state === "PLAYING" ? "rgba(59, 130, 246, 0.2)" : "rgba(52, 211, 153, 0.2)",
+                          color: user.state === "PLAYING" ? "#60a5fa" : "#34d399",
+                          border: user.state === "PLAYING" ? "1px solid rgba(59, 130, 246, 0.3)" : "1px solid rgba(52, 211, 153, 0.3)"
+                        }}>
+                          {user.state || "ONLINE"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem", color: "rgba(255, 255, 255, 0.6)", fontSize: "0.85rem" }}>
+                        {new Date(user.lastActive).toLocaleTimeString()} ({Math.round((Date.now() - user.lastActive)/1000)}s ago)
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

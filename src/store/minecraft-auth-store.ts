@@ -82,12 +82,8 @@ export const useMinecraftAuthStore = create<MinecraftAuthState>((set, get) => ({
   addAccount: async () => {
     set({ isLoading: true, error: null });
 
-    // Check if browser-based login is enabled
-    const [config, isFlatpak] = await Promise.all([
-      getLauncherConfig().catch(() => ({ use_browser_based_login: false })),
-      MinecraftAuthService.isFlatpak().catch(() => false),
-    ]);
-    const useBrowserLogin = isFlatpak || config.use_browser_based_login;
+    // Check if browser-based login is enabled (forced true as Sisu is deprecated)
+    const useBrowserLogin = true;
 
     const fullProcessPromise = (async () => {
       // Step 1: Login

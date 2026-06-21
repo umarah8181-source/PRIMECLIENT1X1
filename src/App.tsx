@@ -44,6 +44,7 @@ import { Button } from "./components/ui/buttons/Button";
 import { openExternalUrl } from "./services/tauri-service";
 import { ExternalLink } from "lucide-react";
 import { MinecraftAuthService } from "./services/minecraft-auth-service";
+import { ClientUpdateModal } from "./components/modals/ClientUpdateModal";
 import ChildProtectionModal from "./components/modals/ChildProtectionModal";
 import { NotificationModal } from "./components/modals/NotificationModal";
 import { useNotificationStore } from "./store/notification-store";
@@ -271,6 +272,29 @@ export function App() {
   useEffect(() => {
     refreshNrcDataOnMount();
   }, []);
+
+  useEffect(() => {
+    const checkUpdatesOnStart = async () => {
+      try {
+        const update = await invoke<any>("check_update_available_command");
+        if (update) {
+          console.log("[App.tsx] Client update available:", update);
+          showModal(
+            "client-update-modal",
+            <ClientUpdateModal
+              updateInfo={update}
+              onClose={() => hideModal("client-update-modal")}
+            />
+          );
+        }
+      } catch (err) {
+        console.warn("[App.tsx] Failed to check for updates on startup:", err);
+      }
+    };
+
+    const timer = setTimeout(checkUpdatesOnStart, 2000);
+    return () => clearTimeout(timer);
+  }, [showModal, hideModal]);
 
   useEffect(() => {
     if (analyticsConsent.decision !== 'accepted' || launcherStartTracked) return;

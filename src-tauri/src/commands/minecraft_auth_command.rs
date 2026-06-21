@@ -36,7 +36,8 @@ pub async fn begin_login<R: Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<Option<Credentials>, CommandError> {    let state = State::get().await?;
     let config = state.config_manager.get_config().await;
-    let use_browser_based_login = updater_utils::is_flatpak() || config.use_browser_based_login;
+    // Always use browser-based login because Sisu device flow is deprecated/unstable on Microsoft's end
+    let use_browser_based_login = true;
 
     if use_browser_based_login {
         // Find an available local port for redirect (typically starts around 25565 or a random choice)
