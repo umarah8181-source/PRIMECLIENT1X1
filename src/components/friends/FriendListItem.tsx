@@ -27,7 +27,9 @@ export const FriendListItem = memo(function FriendListItem({ friend }: FriendLis
   const { accentColor } = useThemeStore();
   const [isRemoving, setIsRemoving] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const avatarUrl = useCrafatarAvatar({ uuid: friend.uuid, size: 48 });
+  const customAvatarUrl = friend.avatarUrl;
+  const crafatarAvatar = useCrafatarAvatar({ uuid: friend.uuid, size: 48 });
+  const avatarUrl = customAvatarUrl || crafatarAvatar;
 
   const unreadCount = useMemo(() => {
     const chat = chats.find(c => c.participants.some(p => p.userId === friend.uuid));

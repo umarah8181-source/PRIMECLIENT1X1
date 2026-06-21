@@ -19,7 +19,9 @@ export const FriendRequestItem = memo(function FriendRequestItem({ request, type
   const [isHovered, setIsHovered] = useState(false);
 
   const otherUser = request.users.find((u) => u.uuid !== currentUser?.uuid);
-  const avatarUrl = useCrafatarAvatar({ uuid: otherUser?.uuid, size: 48 });
+  const customAvatarUrl = otherUser?.avatarUrl;
+  const crafatarAvatar = useCrafatarAvatar({ uuid: otherUser?.uuid, size: 48 });
+  const avatarUrl = customAvatarUrl || crafatarAvatar;
 
   if (!otherUser) return null;
 

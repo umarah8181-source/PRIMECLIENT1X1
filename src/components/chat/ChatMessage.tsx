@@ -31,11 +31,13 @@ interface ChatMessageProps {
   currentUserName?: string;
   accentColor: string;
   showHeader: boolean;
+  customAvatarUrl?: string | null;
 }
 
-export function ChatMessage({ message, isOwn, friendUuid, friendName, currentUserUuid, currentUserName, accentColor, showHeader }: ChatMessageProps) {
+export function ChatMessage({ message, isOwn, friendUuid, friendName, currentUserUuid, currentUserName, accentColor, showHeader, customAvatarUrl }: ChatMessageProps) {
   const avatarUuid = isOwn ? currentUserUuid : friendUuid;
-  const avatarUrl = useCrafatarAvatar({ uuid: avatarUuid, size: 32 });
+  const crafatarAvatar = useCrafatarAvatar({ uuid: avatarUuid, size: 32 });
+  const avatarUrl = customAvatarUrl || crafatarAvatar;
 
   const formatTime = (timestamp?: number) => {
     if (!timestamp) return "";

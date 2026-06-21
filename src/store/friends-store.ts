@@ -3,6 +3,7 @@ import { useProcessStore } from './useProcessStore';
 import { useChatStore, ChatMessage } from './chat-store';
 import { toast } from '../components/ui/GlobalToaster';
 import i18n from '../i18n/i18n';
+import { useMinecraftAuthStore } from './minecraft-auth-store';
 
 export type OnlineState = 'ONLINE' | 'OFFLINE' | 'AFK' | 'BUSY' | 'INVISIBLE';
 
@@ -12,6 +13,7 @@ export interface FriendsFriendUser {
   state: OnlineState;
   server: string | null;
   pingEnabled: boolean | null;
+  avatarUrl?: string | null;
 }
 
 export interface FriendsUser {
@@ -24,11 +26,13 @@ export interface FriendsUser {
     allowRequests: boolean;
     allowServerInvites: boolean;
   };
+  avatarUrl?: string | null;
 }
 
 export interface FriendRequestUser {
   uuid: string;
   username: string;
+  avatarUrl?: string | null;
 }
 
 export interface FriendRequestWithUsers {
@@ -95,14 +99,24 @@ interface FriendsState {
   loginFriendsAccount: (username: string, password: string) => Promise<void>;
   registerFriendsAccount: (username: string, password: string) => Promise<void>;
   logoutFriendsAccount: () => Promise<void>;
+  updateFriendsProfile: (newUsername: string, newAvatarUrl: string) => Promise<void>;
+  syncWithMinecraftAccount: (minecraftAccount: any | null) => Promise<void>;
 }
 
 // Load account from localStorage if exists
 let initialFriendsAccount: { uuid: string; username: string } | null = null;
 try {
-  const saved = localStorage.getItem('prime_friends_account');
-  if (saved) {
-    initialFriendsAccount = JSON.parse(saved);
+  const activeMc = useMinecraftAuthStore.getState().activeAccount;
+  if (activeMc) {
+    const saved = localStorage.getItem(`prime_friends_account_${activeMc.id}`);
+    if (saved) {
+      initialFriendsAccount = JSON.parse(saved);
+    }
+  } else {
+    const saved = localStorage.getItem('prime_friends_account');
+    if (saved) {
+      initialFriendsAccount = JSON.parse(saved);
+    }
   }
 } catch (e) {
   console.error("Failed to parse initial friends account:", e);
@@ -146,6 +160,11 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
       const uuid = data.uuid;
       const account = { uuid, username: data.username };
+      
+      const mcAccount = useMinecraftAuthStore.getState().activeAccount;
+      if (mcAccount) {
+        localStorage.setItem(`prime_friends_account_${mcAccount.id}`, JSON.stringify(account));
+      }
       localStorage.setItem('prime_friends_account', JSON.stringify(account));
 
       set({ friendsAccount: account, isLoading: false });
@@ -208,6 +227,11 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       });
 
       const account = { uuid, username: usernameClean };
+      
+      const mcAccount = useMinecraftAuthStore.getState().activeAccount;
+      if (mcAccount) {
+        localStorage.setItem(`prime_friends_account_${mcAccount.id}`, JSON.stringify(account));
+      }
       localStorage.setItem('prime_friends_account', JSON.stringify(account));
 
       set({ friendsAccount: account, isLoading: false });
@@ -221,8 +245,32 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   },
 
   logoutFriendsAccount: async () => {
+    const account = get().friendsAccount;
+    if (account) {
+      try {
+        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${account.uuid}/state.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify('OFFLINE')
+        });
+        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${account.uuid}/lastActive.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(0)
+        });
+      } catch (e) {
+        console.error("Failed to set status OFFLINE on logout:", e);
+      }
+    }
+
     await get().disconnectWebSocket();
+
+    const mcAccount = useMinecraftAuthStore.getState().activeAccount;
+    if (mcAccount) {
+      localStorage.removeItem(`prime_friends_account_${mcAccount.id}`);
+    }
     localStorage.removeItem('prime_friends_account');
+
     set({
       friendsAccount: null,
       currentUser: null,
@@ -272,7 +320,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
                   username: userData.username || 'Unknown',
                   state: onlineState,
                   server: serverAddress,
-                  pingEnabled
+                  pingEnabled,
+                  avatarUrl: userData.avatarUrl || null
                 } as FriendsFriendUser;
               }
             } catch (e) {
@@ -299,20 +348,48 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       const reqsData = await reqsRes.json();
       let requestsList: FriendRequestWithUsers[] = [];
       if (reqsData) {
-        requestsList = Object.keys(reqsData).map(key => {
+        const keys = Object.keys(reqsData);
+        requestsList = await Promise.all(keys.map(async (key) => {
           const req = reqsData[key];
-          return {
-            id: req.id || key,
-            sender: req.senderUuid,
-            receiver: req.receiverUuid,
-            state: req.state || 'PENDING',
-            timestamp: req.timestamp || Date.now(),
-            users: [
-              { uuid: req.senderUuid, username: req.senderUsername },
-              { uuid: req.receiverUuid, username: req.receiverUsername }
-            ]
-          };
-        });
+          try {
+            const senderRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.senderUuid}.json`);
+            const senderData = await senderRes.json();
+            const receiverRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.map/users/${req.receiverUuid}.json`);
+            const receiverData = await receiverRes.json();
+            return {
+              id: req.id || key,
+              sender: req.senderUuid,
+              receiver: req.receiverUuid,
+              state: req.state || 'PENDING',
+              timestamp: req.timestamp || Date.now(),
+              users: [
+                { 
+                  uuid: req.senderUuid, 
+                  username: senderData?.username || req.senderUsername,
+                  avatarUrl: senderData?.avatarUrl || null
+                },
+                { 
+                  uuid: req.receiverUuid, 
+                  username: receiverData?.username || req.receiverUsername,
+                  avatarUrl: receiverData?.avatarUrl || null
+                }
+              ]
+            };
+          } catch (err) {
+            console.error("Failed to load details for request:", key, err);
+            return {
+              id: req.id || key,
+              sender: req.senderUuid,
+              receiver: req.receiverUuid,
+              state: req.state || 'PENDING',
+              timestamp: req.timestamp || Date.now(),
+              users: [
+                { uuid: req.senderUuid, username: req.senderUsername, avatarUrl: null },
+                { uuid: req.receiverUuid, username: req.receiverUsername, avatarUrl: null }
+              ]
+            };
+          }
+        }));
       }
       set({ pendingRequests: requestsList });
     } catch (e) {
@@ -358,7 +435,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
             showServer: true,
             allowRequests: true,
             allowServerInvites: true
-          }
+          },
+          avatarUrl: userData.avatarUrl || null
         }
       });
     } catch (e) {
@@ -618,7 +696,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
                     username: userData.username || 'Unknown',
                     state: onlineState,
                     server: serverAddress,
-                    pingEnabled
+                    pingEnabled,
+                    avatarUrl: userData.avatarUrl || null
                   } as FriendsFriendUser;
                 }
               } catch (err) {
@@ -648,20 +727,48 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         const reqsData = await reqsRes.json();
         let requestsList: FriendRequestWithUsers[] = [];
         if (reqsData) {
-          requestsList = Object.keys(reqsData).map(key => {
+          const keys = Object.keys(reqsData);
+          requestsList = await Promise.all(keys.map(async (key) => {
             const req = reqsData[key];
-            return {
-              id: req.id || key,
-              sender: req.senderUuid,
-              receiver: req.receiverUuid,
-              state: req.state || 'PENDING',
-              timestamp: req.timestamp || Date.now(),
-              users: [
-                { uuid: req.senderUuid, username: req.senderUsername },
-                { uuid: req.receiverUuid, username: req.receiverUsername }
-              ]
-            };
-          });
+            try {
+              const senderRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.senderUuid}.json`);
+              const senderData = await senderRes.json();
+              const receiverRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.receiverUuid}.json`);
+              const receiverData = await receiverRes.json();
+              return {
+                id: req.id || key,
+                sender: req.senderUuid,
+                receiver: req.receiverUuid,
+                state: req.state || 'PENDING',
+                timestamp: req.timestamp || Date.now(),
+                users: [
+                  { 
+                    uuid: req.senderUuid, 
+                    username: senderData?.username || req.senderUsername,
+                    avatarUrl: senderData?.avatarUrl || null
+                  },
+                  { 
+                    uuid: req.receiverUuid, 
+                    username: receiverData?.username || req.receiverUsername,
+                    avatarUrl: receiverData?.avatarUrl || null
+                  }
+                ]
+              };
+            } catch (err) {
+              console.error("Failed to load details for request in loop:", key, err);
+              return {
+                id: req.id || key,
+                sender: req.senderUuid,
+                receiver: req.receiverUuid,
+                state: req.state || 'PENDING',
+                timestamp: req.timestamp || Date.now(),
+                users: [
+                  { uuid: req.senderUuid, username: req.senderUsername, avatarUrl: null },
+                  { uuid: req.receiverUuid, username: req.receiverUsername, avatarUrl: null }
+                ]
+              };
+            }
+          }));
         }
 
         const incomingReqs = requestsList.filter(r => r.receiver === myUuid);
@@ -851,4 +958,171 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       throw e;
     }
   },
+
+  updateFriendsProfile: async (newUsername: string, newAvatarUrl: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const account = get().friendsAccount;
+      if (!account) throw new Error("Not logged into friends account");
+      
+      const myUuid = account.uuid;
+      const oldUsername = account.username;
+      const oldUsernameLower = oldUsername.trim().toLowerCase();
+      
+      const newUsernameClean = newUsername.trim();
+      const newUsernameLower = newUsernameClean.toLowerCase();
+      
+      if (newUsernameClean.length < 3 || newUsernameClean.length > 16) {
+        throw new Error("Username must be between 3 and 16 characters");
+      }
+      const re = /^[a-zA-Z0-9_]+$/;
+      if (!re.test(newUsernameClean)) {
+        throw new Error("Username can only contain letters, numbers, and underscores");
+      }
+      
+      // Fetch old credentials to get the password
+      const oldCredRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${oldUsernameLower}.json`);
+      const oldCredData = await oldCredRes.json();
+      const password = oldCredData?.password || "";
+      
+      if (newUsernameLower !== oldUsernameLower) {
+        const checkRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${newUsernameLower}.json`);
+        const checkData = await checkRes.json();
+        if (checkData && checkData.uuid !== myUuid) {
+          throw new Error("Username is already taken");
+        }
+        
+        // Write new credentials
+        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${newUsernameLower}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: newUsernameClean,
+            password: password,
+            uuid: myUuid
+          })
+        });
+        
+        // Delete old credentials
+        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${oldUsernameLower}.json`, {
+          method: 'DELETE'
+        });
+      } else {
+        // Just update casing if it changed
+        if (newUsernameClean !== oldUsername) {
+          await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${oldUsernameLower}.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: newUsernameClean,
+              password: password,
+              uuid: myUuid
+            })
+          });
+        }
+      }
+      
+      // Patch user profile
+      const cleanAvatarUrl = newAvatarUrl.trim();
+      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}.json`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: newUsernameClean,
+          avatarUrl: cleanAvatarUrl || null
+        })
+      });
+      
+      // Update local storage and store state
+      const updatedAccount = { uuid: myUuid, username: newUsernameClean };
+      const mcAccount = useMinecraftAuthStore.getState().activeAccount;
+      if (mcAccount) {
+        localStorage.setItem(`prime_friends_account_${mcAccount.id}`, JSON.stringify(updatedAccount));
+      }
+      localStorage.setItem('prime_friends_account', JSON.stringify(updatedAccount));
+      
+      set({
+        friendsAccount: updatedAccount,
+        currentUser: get().currentUser ? {
+          ...get().currentUser!,
+          username: newUsernameClean,
+          avatarUrl: cleanAvatarUrl || null
+        } : null,
+        isLoading: false
+      });
+      
+      await get().loadFriends(true);
+    } catch (e: any) {
+      set({ error: e.message || String(e), isLoading: false });
+      throw e;
+    }
+  },
+
+  syncWithMinecraftAccount: async (minecraftAccount: any | null) => {
+    const currentAccount = get().friendsAccount;
+    
+    if (!minecraftAccount) {
+      if (currentAccount) {
+        await get().logoutFriendsAccount();
+      }
+      return;
+    }
+    
+    const mcId = minecraftAccount.id;
+    const savedKey = `prime_friends_account_${mcId}`;
+    const saved = localStorage.getItem(savedKey);
+    
+    if (saved) {
+      try {
+        const accountObj = JSON.parse(saved);
+        if (!currentAccount || currentAccount.uuid !== accountObj.uuid) {
+          if (currentAccount) {
+            await get().disconnectWebSocket();
+            try {
+              await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${currentAccount.uuid}/state.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify('OFFLINE')
+              });
+              await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${currentAccount.uuid}/lastActive.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(0)
+              });
+            } catch (e) {
+              console.error("Failed to mark old session offline on switch:", e);
+            }
+          }
+          
+          set({ 
+            friendsAccount: accountObj,
+            isLoading: true,
+            error: null
+          });
+          
+          await get().loadCurrentUser();
+          await get().loadFriends(true);
+          await get().connectWebSocket();
+          set({ isLoading: false });
+        }
+      } catch (e) {
+        console.error("Failed to parse saved friends account for MC account:", mcId, e);
+      }
+    } else {
+      if (currentAccount) {
+        await get().logoutFriendsAccount();
+      }
+    }
+  },
 }));
+
+// Subscribe to Minecraft auth store to sync accounts
+let lastActiveAccountId: string | null = null;
+useMinecraftAuthStore.subscribe((state) => {
+  const currentActiveAccount = state.activeAccount;
+  const currentId = currentActiveAccount ? currentActiveAccount.id : null;
+  if (currentId !== lastActiveAccountId) {
+    lastActiveAccountId = currentId;
+    useFriendsStore.getState().syncWithMinecraftAccount(currentActiveAccount);
+  }
+});

@@ -81,7 +81,9 @@ export function ChatPanel({ friend }: ChatPanelProps) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const avatarUrl = useCrafatarAvatar({ uuid: friend.uuid, size: 20 });
+  const customAvatarUrl = friend.avatarUrl;
+  const crafatarAvatar = useCrafatarAvatar({ uuid: friend.uuid, size: 20 });
+  const avatarUrl = customAvatarUrl || crafatarAvatar;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -510,6 +512,7 @@ export function ChatPanel({ friend }: ChatPanelProps) {
                     currentUserName={currentUser?.username}
                     accentColor={accentColor.value}
                     showHeader={isNewGroup}
+                    customAvatarUrl={message.senderId === currentUser?.uuid ? currentUser?.avatarUrl : friend.avatarUrl}
                   />
                 </div>
               );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../../i18n/i18n";
 import { Icon } from "@iconify/react";
@@ -6,6 +6,7 @@ import { useFriendsStore, OnlineState } from "../../store/friends-store";
 import { useThemeStore } from "../../store/useThemeStore";
 import { useCrafatarAvatar } from "../../hooks/useCrafatarAvatar";
 import { StatusSelector } from "./StatusSelector";
+import { toast } from "react-hot-toast";
 
 const getStatusConfig = (): Record<OnlineState, { color: string; label: string; glow: string }> => ({
   ONLINE: { color: "#22c55e", label: i18n.t('friends.status.online'), glow: "0 0 8px rgba(34, 197, 94, 0.6)" },
@@ -63,9 +64,28 @@ function PrivacyToggle({ label, description, enabled, loading, onToggle, accentC
 export function SettingsPanel() {
   const { t } = useTranslation();
   const { accentColor } = useThemeStore();
-  const { currentUser, closeSettings, updatePrivacySetting, logoutFriendsAccount } = useFriendsStore();
-  const avatarUrl = useCrafatarAvatar({ uuid: currentUser?.uuid, size: 64 });
+  const { currentUser, closeSettings, updatePrivacySetting, logoutFriendsAccount, updateFriendsProfile } = useFriendsStore();
+  
+  const customAvatarUrl = currentUser?.avatarUrl;
+  const crafatarAvatar = useCrafatarAvatar({ uuid: currentUser?.uuid, size: 64 });
+  const avatarUrl = customAvatarUrl || crafatarAvatar;
+
   const [loadingSettings, setLoadingSettings] = useState<Record<string, boolean>>({});
+  
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editUsername, setEditUsername] = useState("");
+  const [editAvatarUrl, setEditAvatarUrl] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync edits when user loads or updates
+  useEffect(() => {
+    if (currentUser) {
+      setEditUsername(currentUser.username);
+      setEditAvatarUrl(currentUser.avatarUrl || "");
+    }
+  }, [currentUser]);
 
   if (!currentUser) {
     return (
@@ -92,6 +112,29 @@ export function SettingsPanel() {
       console.error("Failed to update privacy setting:", e);
     } finally {
       setLoadingSettings((prev) => ({ ...prev, [setting]: false }));
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditUsername(currentUser.username);
+    setEditAvatarUrl(currentUser.avatarUrl || "");
+    setEditError(null);
+    setIsEditingProfile(false);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
+    setEditError(null);
+    try {
+      await updateFriendsProfile(editUsername, editAvatarUrl);
+      setIsEditingProfile(false);
+      toast.success("Profile updated successfully!");
+    } catch (err: any) {
+      setEditError(err.message || String(err));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -132,7 +175,7 @@ export function SettingsPanel() {
               <img
                 src={avatarUrl}
                 alt={currentUser.uuid}
-                className="w-16 h-16 rounded-xl"
+                className="w-16 h-16 rounded-xl object-cover"
                 style={{
                   border: `3px solid ${accentColor.value}60`,
                   boxShadow: `0 0 20px ${accentColor.value}30`,
@@ -162,11 +205,111 @@ export function SettingsPanel() {
               }}
             />
           </div>
-          <div className="text-center">
-            <div className="text-white font-minecraft-ten text-sm mb-1">{t('friends.settings.your_profile')}</div>
-            <div className="text-white/50 font-minecraft text-2xl">{status.label}</div>
+          <div className="text-center w-full">
+            <div className="text-white font-minecraft-ten text-sm mb-1">{currentUser.username}</div>
+            <div className="text-white/50 font-minecraft text-xs mb-3">{status.label}</div>
+            
+            <button
+              onClick={() => {
+                if (isEditingProfile) {
+                  handleCancelEdit();
+                } else {
+                  setIsEditingProfile(true);
+                }
+              }}
+              className="px-2.5 py-1 rounded-lg text-[10px] font-minecraft-ten transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] inline-flex items-center gap-1 cursor-pointer"
+              style={{
+                backgroundColor: `${accentColor.value}20`,
+                border: `1px solid ${accentColor.value}40`,
+                color: 'white'
+              }}
+            >
+              <Icon icon={isEditingProfile ? "solar:close-circle-bold" : "solar:pen-bold"} className="w-3 h-3" />
+              {isEditingProfile ? "Cancel" : "Edit Profile"}
+            </button>
           </div>
         </div>
+
+        {/* Edit Profile Form */}
+        {isEditingProfile && (
+          <form
+            onSubmit={handleSaveProfile}
+            className="p-4 rounded-xl space-y-3 transition-all duration-300"
+            style={{
+              backgroundColor: `${accentColor.value}10`,
+              border: `1px solid ${accentColor.value}30`,
+            }}
+          >
+            <div className="text-xs font-bold text-white uppercase tracking-wider font-minecraft-ten">
+              Edit Profile Settings
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-minecraft-ten text-white/70 uppercase">Username</label>
+              <div
+                className="flex items-center gap-2 rounded-lg border transition-all duration-200 px-3 py-1.5"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.2)",
+                  borderColor: `${accentColor.value}35`
+                }}
+              >
+                <input
+                  type="text"
+                  required
+                  value={editUsername}
+                  onChange={(e) => { setEditUsername(e.target.value); setEditError(null); }}
+                  placeholder="Enter username"
+                  className="flex-1 bg-transparent text-white font-minecraft text-sm focus:outline-none"
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-minecraft-ten text-white/70 uppercase">Avatar URL (Optional)</label>
+              <div
+                className="flex items-center gap-2 rounded-lg border transition-all duration-200 px-3 py-1.5"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.2)",
+                  borderColor: `${accentColor.value}35`
+                }}
+              >
+                <input
+                  type="url"
+                  value={editAvatarUrl}
+                  onChange={(e) => { setEditAvatarUrl(e.target.value); setEditError(null); }}
+                  placeholder="https://imgur.com/your-image.png"
+                  className="flex-1 bg-transparent text-white font-minecraft text-sm focus:outline-none"
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+
+            {editError && (
+              <div className="flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg font-minecraft text-[11px] text-red-400 bg-red-500/10 border border-red-500/20">
+                <Icon icon="solar:danger-circle-bold" className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span className="break-words min-w-0">{editError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-white font-minecraft-ten text-xs font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              style={{
+                backgroundColor: accentColor.value,
+                opacity: isSaving ? 0.7 : 1,
+              }}
+            >
+              {isSaving ? (
+                <Icon icon="solar:refresh-linear" className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Icon icon="solar:check-circle-bold" className="w-3.5 h-3.5" />
+              )}
+              Save Changes
+            </button>
+          </form>
+        )}
 
         <div className="space-y-2">
           <div className="text-xs font-medium text-white/40 uppercase tracking-wider font-minecraft-ten px-1">
@@ -210,7 +353,7 @@ export function SettingsPanel() {
         <div className="pt-2 border-t" style={{ borderColor: `${accentColor.value}30` }}>
           <button
             onClick={logoutFriendsAccount}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-minecraft-ten text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-minecraft-ten text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             style={{
               backgroundColor: "rgba(239, 68, 68, 0.15)",
               border: "1px solid rgba(239, 68, 68, 0.4)",
