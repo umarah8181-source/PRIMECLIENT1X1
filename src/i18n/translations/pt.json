@@ -1638,7 +1638,6 @@
   "placeholders.profile_name_awesome": "Meu Perfil Incrível",
   "placeholders.group_name": "ex. modpacks, vanilla+",
   "referral.loading": "Carregando indicação...",
-
   "rollout.popover.title": "Você está testando a nova versão NRC",
   "rollout.popover.title_opted_out": "Testes desativados",
   "rollout.popover.body_intro_before": "Você é um dos",
@@ -1729,5 +1728,11 @@
   "profiles.v3.logs.uploading": "Enviando para mclo.gs…",
   "profiles.v3.logs.uploadSuccess": "Enviado: {{url}}",
   "profiles.v3.logs.uploadFailed": "Falha no envio: {{error}}",
-  "profiles.v3.logs.urlCopied": "URL do mclo.gs copiada para a área de transferência"
+  "profiles.v3.logs.urlCopied": "URL do mclo.gs copiada para a área de transferência",
+  "updater.available_title": "Atualização do cliente disponível",
+  "updater.available_message": "Você pode atualizar o cliente",
+  "updater.available_version": "A versão {{version}} já está disponível.",
+  "updater.changelog": "Registro de alterações:",
+  "updater.later": "Mais tarde",
+  "updater.now": "Atualizar agora"
 }

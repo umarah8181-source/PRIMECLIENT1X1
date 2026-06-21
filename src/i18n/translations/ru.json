@@ -1638,7 +1638,6 @@
   "placeholders.profile_name_awesome": "Мой крутой профиль",
   "placeholders.group_name": "например, модпаки, ванилла+",
   "referral.loading": "Загрузка реферала...",
-
   "rollout.popover.title": "Вы тестируете новую версию NRC",
   "rollout.popover.title_opted_out": "Тестирование отключено",
   "rollout.popover.body_intro_before": "Вы один из",
@@ -1729,5 +1728,11 @@
   "profiles.v3.logs.uploading": "Загрузка на mclo.gs…",
   "profiles.v3.logs.uploadSuccess": "Загружено: {{url}}",
   "profiles.v3.logs.uploadFailed": "Ошибка загрузки: {{error}}",
-  "profiles.v3.logs.urlCopied": "URL mclo.gs скопирован в буфер обмена"
+  "profiles.v3.logs.urlCopied": "URL mclo.gs скопирован в буфер обмена",
+  "updater.available_title": "Доступно обновление клиента",
+  "updater.available_message": "Вы можете обновить клиент",
+  "updater.available_version": "Версия {{version}} уже доступна.",
+  "updater.changelog": "Список изменений:",
+  "updater.later": "Позже",
+  "updater.now": "Обновить сейчас"
 }

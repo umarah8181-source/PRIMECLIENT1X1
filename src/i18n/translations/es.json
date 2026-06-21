@@ -1445,7 +1445,6 @@
   "placeholders.profile_name_awesome": "Mi Perfil Increíble",
   "placeholders.group_name": "ej. modpacks, vanilla+",
   "referral.loading": "Cargando referido...",
-
   "rollout.popover.title": "Estás probando la nueva versión NRC",
   "rollout.popover.title_opted_out": "Pruebas desactivadas",
   "rollout.popover.body_intro_before": "Eres uno de los",
@@ -1729,5 +1728,11 @@
   "profiles.v3.logs.uploading": "Subiendo a mclo.gs…",
   "profiles.v3.logs.uploadSuccess": "Subido: {{url}}",
   "profiles.v3.logs.uploadFailed": "Error al subir: {{error}}",
-  "profiles.v3.logs.urlCopied": "URL de mclo.gs copiada al portapapeles"
+  "profiles.v3.logs.urlCopied": "URL de mclo.gs copiada al portapapeles",
+  "updater.available_title": "Actualización del cliente disponible",
+  "updater.available_message": "Puedes actualizar el cliente",
+  "updater.available_version": "La versión {{version}} ya está disponible.",
+  "updater.changelog": "Registro de cambios:",
+  "updater.later": "Más tarde",
+  "updater.now": "Actualizar ahora"
 }

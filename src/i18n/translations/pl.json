@@ -1445,7 +1445,6 @@
   "placeholders.profile_name_awesome": "Mój super profil",
   "placeholders.group_name": "np. modpacki, vanilla+",
   "referral.loading": "Ładowanie polecenia...",
-
   "rollout.popover.title": "Testujesz nową wersję NRC",
   "rollout.popover.title_opted_out": "Testy wyłączone",
   "rollout.popover.body_intro_before": "Jesteś jednym z",
@@ -1729,5 +1728,11 @@
   "profiles.v3.logs.uploading": "Wysyłanie na mclo.gs…",
   "profiles.v3.logs.uploadSuccess": "Wysłano: {{url}}",
   "profiles.v3.logs.uploadFailed": "Błąd wysyłania: {{error}}",
-  "profiles.v3.logs.urlCopied": "URL mclo.gs skopiowany do schowka"
+  "profiles.v3.logs.urlCopied": "URL mclo.gs skopiowany do schowka",
+  "updater.available_title": "Dostępna aktualizacja klienta",
+  "updater.available_message": "Możesz zaktualizować klienta",
+  "updater.available_version": "Wersja {{version}} jest już dostępna.",
+  "updater.changelog": "Lista zmian:",
+  "updater.later": "Później",
+  "updater.now": "Aktualizuj teraz"
 }

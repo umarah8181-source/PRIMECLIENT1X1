@@ -1445,7 +1445,6 @@
   "placeholders.profile_name_awesome": "Harika Profilim",
   "placeholders.group_name": "ör. modpack'ler, vanilla+",
   "referral.loading": "Referans yükleniyor...",
-
   "rollout.popover.title": "Yeni NRC sürümünü test ediyorsun",
   "rollout.popover.title_opted_out": "Test devre dışı",
   "rollout.popover.body_intro_before": "Sen de yeni NRC sürümünü test eden",
@@ -1729,5 +1728,11 @@
   "profiles.v3.logs.uploading": "mclo.gs'e yükleniyor…",
   "profiles.v3.logs.uploadSuccess": "Yüklendi: {{url}}",
   "profiles.v3.logs.uploadFailed": "Yükleme başarısız: {{error}}",
-  "profiles.v3.logs.urlCopied": "mclo.gs URL'si panoya kopyalandı"
+  "profiles.v3.logs.urlCopied": "mclo.gs URL'si panoya kopyalandı",
+  "updater.available_title": "İstemci Güncellemesi Mevcut",
+  "updater.available_message": "İstemciyi güncelleyebilirsiniz",
+  "updater.available_version": "Sürüm {{version}} artık mevcut.",
+  "updater.changelog": "Değişiklik günlüğü:",
+  "updater.later": "Daha sonra",
+  "updater.now": "Şimdi Güncelle"
 }

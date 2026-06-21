@@ -7,6 +7,7 @@ import { Button } from "../ui/buttons/Button";
 import { listen, type Event as TauriEvent } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 interface UpdateInfo {
   version: string;
@@ -28,6 +29,7 @@ interface UpdaterStatusPayload {
 }
 
 export function ClientUpdateModal({ updateInfo, onClose }: ClientUpdateModalProps) {
+  const { t } = useTranslation();
   const [updating, setUpdating] = useState(false);
   const [status, setStatus] = useState("");
   const [progress, setProgress] = useState<number | null>(null);
@@ -76,7 +78,7 @@ export function ClientUpdateModal({ updateInfo, onClose }: ClientUpdateModalProp
 
   return (
     <Modal
-      title="Client Update Available"
+      title={t("updater.available_title", "Client Update Available")}
       onClose={updating ? () => {} : onClose}
       width="md"
       variant="flat"
@@ -86,17 +88,17 @@ export function ClientUpdateModal({ updateInfo, onClose }: ClientUpdateModalProp
           <Icon icon="solar:download-bold" className="w-10 h-10 text-accent animate-pulse" />
           <div>
             <h3 className="text-xl font-minecraft text-white lowercase">
-              You can update the client
+              {t("updater.available_message", "You can update the client")}
             </h3>
             <p className="text-sm text-white/50 font-minecraft-ten">
-              Version {updateInfo.version} is now available.
+              {t("updater.available_version", "Version {{version}} is now available.", { version: updateInfo.version })}
             </p>
           </div>
         </div>
 
         {updateInfo.body && (
           <div className="bg-black/20 border border-white/10 p-4 rounded-md max-h-[150px] overflow-y-auto custom-scrollbar">
-            <h4 className="text-sm font-minecraft text-white mb-2">Changelog:</h4>
+            <h4 className="text-sm font-minecraft text-white mb-2">{t("updater.changelog", "Changelog:")}</h4>
             <p className="text-xs text-white/70 font-minecraft-ten whitespace-pre-wrap">
               {updateInfo.body}
             </p>
@@ -127,10 +129,10 @@ export function ClientUpdateModal({ updateInfo, onClose }: ClientUpdateModalProp
         ) : (
           <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
             <Button variant="ghost" onClick={onClose} size="md">
-              Later
+              {t("updater.later", "Later")}
             </Button>
             <Button variant="default" onClick={handleUpdate} size="md">
-              Update Now
+              {t("updater.now", "Update Now")}
             </Button>
           </div>
         )}

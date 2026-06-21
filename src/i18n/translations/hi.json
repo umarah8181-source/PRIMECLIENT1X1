@@ -1454,7 +1454,6 @@
   "placeholders.profile_name_awesome": "मेरी शानदार प्रोफ़ाइल",
   "placeholders.group_name": "जैसे modpacks, vanilla+",
   "referral.loading": "रेफरल लोड हो रहा है...",
-
   "rollout.popover.title": "आप नया NRC संस्करण टेस्ट कर रहे हैं",
   "rollout.popover.title_opted_out": "टेस्टिंग बंद",
   "rollout.popover.body_intro_before": "आप उन",
@@ -1744,5 +1743,11 @@
   "profiles.v3.logs.uploading": "mclo.gs पर अपलोड हो रहा है…",
   "profiles.v3.logs.uploadSuccess": "अपलोड हुआ: {{url}}",
   "profiles.v3.logs.uploadFailed": "अपलोड विफल: {{error}}",
-  "profiles.v3.logs.urlCopied": "mclo.gs URL क्लिपबोर्ड पर कॉपी हो गया"
+  "profiles.v3.logs.urlCopied": "mclo.gs URL क्लिपबोर्ड पर कॉपी हो गया",
+  "updater.available_title": "क्लाइंट अपडेट उपलब्ध है",
+  "updater.available_message": "आप क्लाइंट को अपडेट कर सकते हैं",
+  "updater.available_version": "संस्करण {{version}} अब उपलब्ध है।",
+  "updater.changelog": "बदलावों की सूची (Changelog):",
+  "updater.later": "बाद में",
+  "updater.now": "अभी अपडेट करें"
 }

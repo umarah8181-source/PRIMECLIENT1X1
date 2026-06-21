@@ -1445,7 +1445,6 @@
   "placeholders.profile_name_awesome": "Il mio profilo fantastico",
   "placeholders.group_name": "es. modpack, vanilla+",
   "referral.loading": "Caricamento referral...",
-
   "rollout.popover.title": "Stai testando la nuova versione NRC",
   "rollout.popover.title_opted_out": "Test disattivati",
   "rollout.popover.body_intro_before": "Sei uno dei",
@@ -1729,5 +1728,11 @@
   "profiles.v3.logs.uploading": "Caricamento su mclo.gs…",
   "profiles.v3.logs.uploadSuccess": "Caricato: {{url}}",
   "profiles.v3.logs.uploadFailed": "Caricamento fallito: {{error}}",
-  "profiles.v3.logs.urlCopied": "URL mclo.gs copiato negli appunti"
+  "profiles.v3.logs.urlCopied": "URL mclo.gs copiato negli appunti",
+  "updater.available_title": "Aggiornamento client disponibile",
+  "updater.available_message": "Puoi aggiornare il client",
+  "updater.available_version": "La versione {{version}} è ora disponibile.",
+  "updater.changelog": "Registro delle modifiche:",
+  "updater.later": "Più tardi",
+  "updater.now": "Aggiorna ora"
 }
