@@ -326,9 +326,9 @@ export function MinecraftAccountManager({
           <div className="flex justify-end gap-3">
             <Button
               variant="success"
-              onClick={handleAddAccountMicrosoft}
+              onClick={() => setView("choice")}
               disabled={isLoading}
-              icon={<Icon icon="logos:microsoft-icon" className="w-5 h-5" />}
+              icon={<Icon icon="solar:add-circle-bold" className="w-5 h-5" />}
               size="lg"
             >
               {t("auth.addMinecraftAccount")}
@@ -400,9 +400,9 @@ export function MinecraftAccountManager({
         <DropdownFooter>
           <Button
             variant="default"
-            onClick={handleAddAccountMicrosoft}
+            onClick={() => setView("choice")}
             disabled={isLoading}
-            icon={<Icon icon="logos:microsoft-icon" className="w-3 h-3" />}
+            icon={<Icon icon="solar:add-circle-bold" className="w-3 h-3" />}
             size="sm"
             className="w-full"
           >

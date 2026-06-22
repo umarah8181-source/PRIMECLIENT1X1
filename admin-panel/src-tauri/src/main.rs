@@ -535,11 +535,11 @@ async fn publish_update(
 
     let client = reqwest::Client::new();
     let response = client
-        .put("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/update.json")
+        .put("https://primeclient.is-best.net/update.json")
         .json(&update_data)
         .send()
         .await
-        .map_err(|e| format!("Failed to save update data to Firebase: {}", e))?;
+        .map_err(|e| format!("Failed to save update data: {}", e))?;
 
     let status = response.status();
     if !status.is_success() {
@@ -566,10 +566,10 @@ async fn select_installer_file() -> Result<Option<String>, String> {
 async fn remove_update() -> Result<(), String> {
     let client = reqwest::Client::new();
     let response = client
-        .delete("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/update.json")
+        .delete("https://primeclient.is-best.net/update.json")
         .send()
         .await
-        .map_err(|e| format!("Failed to send delete request to Firebase: {}", e))?;
+        .map_err(|e| format!("Failed to send delete request: {}", e))?;
 
     let status = response.status();
     if !status.is_success() {

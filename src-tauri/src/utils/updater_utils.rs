@@ -133,13 +133,13 @@ pub async fn check_update_available(
 
     let client = reqwest::Client::new();
     let response = client
-        .get("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/update.json")
+        .get("https://primeclient.is-best.net/update.json")
         .send()
         .await
-        .map_err(|e| AppError::Other(format!("Failed to contact Firebase database: {}", e)))?;
+        .map_err(|e| AppError::Other(format!("Failed to contact update server: {}", e)))?;
 
     if !response.status().is_success() {
-        return Err(AppError::Other(format!("Firebase database returned error status: {}", response.status())));
+        return Err(AppError::Other(format!("Update server returned error status: {}", response.status())));
     }
 
     let firebase_info: Option<FirebaseUpdate> = response

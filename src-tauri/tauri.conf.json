@@ -95,7 +95,8 @@
           "https://*.modrinth.com",
           "https://sessionserver.mojang.com",
           "https://*.prime.gg",
-          "https://*.firebasedatabase.app"
+          "https://*.firebasedatabase.app",
+          "https://primeclient.is-best.net"
         ],
         "img-src": [
           "'self'",
