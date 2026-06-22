@@ -280,7 +280,7 @@ export default function App() {
           if (val && typeof val === "object") {
             const isOnline = val.state === "ONLINE" || val.state === "PLAYING";
             const wasActiveRecently = val.lastActive && (now - val.lastActive <= 45000);
-            if (isOnline || wasActiveRecently) {
+            if (isOnline && wasActiveRecently) {
               activeList.push({
                 uuid,
                 username: val.username || "Unknown",
@@ -493,103 +493,131 @@ export default function App() {
   };
 
   return (
-    <div className="app-container">
-      <header>
-        <h1>
-          <Server size={32} style={{ color: "#3b82f6" }} />
-          Prime Client Admin <span>v1.0</span>
-          {activeUsersCount !== null && (
-            <span style={{ 
-              fontSize: "0.85rem", 
-              color: "#34d399", 
-              background: "rgba(52, 211, 153, 0.1)", 
-              padding: "0.25rem 0.75rem", 
-              borderRadius: "9999px", 
-              marginLeft: "1rem", 
-              display: "inline-flex", 
-              alignItems: "center", 
-              gap: "0.25rem",
-              fontWeight: 600,
-              verticalAlign: "middle"
-            }}>
-              <span className="pulse-indicator" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#34d399", display: "inline-block" }}></span>
-              {activeUsersCount} Active Users
-            </span>
-          )}
-        </h1>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+    <div className="admin-layout">
+      <aside className="admin-sidebar">
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <Server size={20} style={{ color: "#3b82f6" }} />
+            Prime Client <span>Admin</span>
+          </div>
+        </div>
+        <nav className="sidebar-nav">
           <button 
-            className={`btn ${activeTab === "servers" ? "btn-primary" : "btn-secondary"}`}
+            className={`nav-btn ${activeTab === "servers" ? "active" : ""}`}
             onClick={() => setActiveTab("servers")}
-            style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <Server size={16} />
-            Servers
+            <Server size={18} />
+            Game Servers
           </button>
           <button 
-            className={`btn ${activeTab === "notifications" ? "btn-primary" : "btn-secondary"}`}
+            className={`nav-btn ${activeTab === "notifications" ? "active" : ""}`}
             onClick={() => setActiveTab("notifications")}
-            style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <Bell size={16} />
+            <Bell size={18} />
             Notifications
           </button>
           <button 
-            className={`btn ${activeTab === "updates" ? "btn-primary" : "btn-secondary"}`}
+            className={`nav-btn ${activeTab === "updates" ? "active" : ""}`}
             onClick={() => setActiveTab("updates")}
-            style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <Plus size={16} />
+            <Plus size={18} />
             Client Updates
           </button>
           <button 
-            className={`btn ${activeTab === "active-users" ? "btn-primary" : "btn-secondary"}`}
+            className={`nav-btn ${activeTab === "active-users" ? "active" : ""}`}
             onClick={() => setActiveTab("active-users")}
-            style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <Users size={16} />
-            Active Users ({activeUsersCount !== null ? activeUsersCount : 0})
+            <Users size={18} />
+            Active Users
           </button>
           <button 
-            className={`btn ${activeTab === "settings" ? "btn-primary" : "btn-secondary"}`}
+            className={`nav-btn ${activeTab === "settings" ? "active" : ""}`}
             onClick={() => setActiveTab("settings")}
-            style={{ width: "auto", padding: "0.5rem 1rem" }}
           >
-            <Settings size={16} />
+            <Settings size={18} />
             Settings
           </button>
+        </nav>
+        <div className="sidebar-footer">
           <button 
             className="btn btn-secondary" 
             onClick={activeTab === "servers" ? fetchServers : activeTab === "notifications" ? fetchNotifications : activeTab === "active-users" ? fetchActiveUsers : activeTab === "settings" ? fetchThemeSettings : fetchCurrentUpdateInfo} 
             disabled={loading || notifLoading || uploadingUpdate || loadingUsers || loadingSettings} 
-            style={{ width: "auto", padding: "0.5rem 1rem" }}
+            style={{ fontSize: "0.85rem", padding: "0.6rem", width: "100%" }}
           >
-            <RotateCcw size={16} className={(loading || notifLoading || uploadingUpdate || loadingUsers || loadingSettings) ? "animate-spin" : ""} />
-            Refresh
+            <RotateCcw size={14} className={(loading || notifLoading || uploadingUpdate || loadingUsers || loadingSettings) ? "animate-spin" : ""} />
+            Refresh Panel
           </button>
         </div>
-      </header>
+      </aside>
 
-      {notification && (
-        <div 
-          style={{
-            padding: "1rem",
-            marginBottom: "1.5rem",
-            borderRadius: "8px",
-            background: notification.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-            border: notification.type === "success" ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
-            color: notification.type === "success" ? "#34d399" : "#f87171",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            fontWeight: 600,
-            fontSize: "0.95rem"
-          }}
-        >
-          <AlertTriangle size={18} />
-          {notification.message}
+      <main className="admin-main">
+        {/* Stats Summary Grid */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon-wrapper">
+              <Users size={20} />
+            </div>
+            <div className="stat-info">
+              <span className="stat-label">Active Players</span>
+              <span className="stat-value" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span className="pulse-indicator" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+                {activeUsersCount !== null ? activeUsersCount : 0}
+              </span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon-wrapper">
+              <Server size={20} />
+            </div>
+            <div className="stat-info">
+              <span className="stat-label">Game Servers</span>
+              <span className="stat-value">{servers.length}</span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon-wrapper">
+              <Plus size={20} />
+            </div>
+            <div className="stat-info">
+              <span className="stat-label">Release Version</span>
+              <span className="stat-value">{currentVersionInfo ? currentVersionInfo.version : "v1.0.0"}</span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon-wrapper">
+              <Settings size={20} />
+            </div>
+            <div className="stat-info">
+              <span className="stat-label">Service Status</span>
+              <span className="stat-value" style={{ color: "#8b5cf6" }}>Online</span>
+            </div>
+          </div>
         </div>
-      )}
+
+        {notification && (
+          <div 
+            style={{
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              borderRadius: "12px",
+              background: notification.type === "success" ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
+              border: notification.type === "success" ? "1px solid rgba(16, 185, 129, 0.2)" : "1px solid rgba(239, 68, 68, 0.2)",
+              color: notification.type === "success" ? "#34d399" : "#f87171",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontWeight: 600,
+              fontSize: "0.95rem"
+            }}
+          >
+            <AlertTriangle size={18} />
+            {notification.message}
+          </div>
+        )}
 
       {activeTab === "servers" && (
         <div className="dashboard-grid">
@@ -1087,7 +1115,7 @@ export default function App() {
           )}
         </div>
       )}
-
+      </main>
     </div>
   );
 }

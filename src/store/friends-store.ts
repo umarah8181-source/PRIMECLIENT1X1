@@ -696,115 +696,134 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
           });
         }
 
-        const friendsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}.json`);
-        const friendsData = await friendsRes.json();
-        
-        let friendsList: FriendsFriendUser[] = [];
-        if (friendsData) {
-          const friendUuids = Object.keys(friendsData);
-          const friendsDetails = await Promise.all(
-            friendUuids.map(async (fUuid) => {
-              try {
-                const userRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${fUuid}.json`);
-                const userData = await userRes.json();
-                if (userData) {
-                  const pingEnabled = friendsData[fUuid]?.pingEnabled || false;
-                  const isOffline = !userData.lastActive || (Date.now() - userData.lastActive > 45000) || userData.state === 'INVISIBLE';
-                  const onlineState: OnlineState = isOffline ? 'OFFLINE' : userData.state;
-                  const serverAddress = isOffline ? null : userData.server;
+        const shouldFetchDetails = loopCount === 0 || loopCount % 3 === 0;
+        let friendsList = get().friends;
 
-                  return {
-                    uuid: fUuid,
-                    username: userData.username || 'Unknown',
-                    state: onlineState,
-                    server: serverAddress,
-                    pingEnabled,
-                    avatarUrl: userData.avatarUrl || null
-                  } as FriendsFriendUser;
-                }
-              } catch (err) {
-                console.error("Failed to fetch details in loop for:", fUuid, err);
-              }
-              return null;
-            })
-          );
-          friendsList = friendsDetails.filter((f): f is FriendsFriendUser => f !== null);
-        }
+        if (shouldFetchDetails) {
+          try {
+            const friendsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}.json`);
+            const friendsData = await friendsRes.json();
+            
+            if (friendsData) {
+              const friendUuids = Object.keys(friendsData);
+              const friendsDetails = await Promise.all(
+                friendUuids.map(async (fUuid) => {
+                  try {
+                    const userRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${fUuid}.json`);
+                    const userData = await userRes.json();
+                    if (userData) {
+                      const pingEnabled = friendsData[fUuid]?.pingEnabled || false;
+                      const isOffline = !userData.lastActive || (Date.now() - userData.lastActive > 45000) || userData.state === 'INVISIBLE';
+                      const onlineState: OnlineState = isOffline ? 'OFFLINE' : userData.state;
+                      const serverAddress = isOffline ? null : userData.server;
 
-        friendsList.forEach(f => {
-          const prevState = previousStates[f.uuid];
-          if (prevState !== undefined && prevState !== f.state) {
-            if (f.state === 'OFFLINE' && get().notificationsEnabled) {
-              toast.player(i18n.t('friends.notifications.offline', { username: f.username }), f.uuid);
-            } else if (['ONLINE', 'AFK', 'BUSY'].includes(f.state) && prevState === 'OFFLINE' && get().notificationsEnabled) {
-              toast.player(i18n.t('friends.notifications.online', { username: f.username }), f.uuid);
-            }
-          }
-          previousStates[f.uuid] = f.state;
-        });
-
-        set({ friends: friendsList, lastFetchedAt: Date.now() });
-
-        const reqsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}.json`);
-        const reqsData = await reqsRes.json();
-        let requestsList: FriendRequestWithUsers[] = [];
-        if (reqsData) {
-          const keys = Object.keys(reqsData);
-          requestsList = await Promise.all(keys.map(async (key) => {
-            const req = reqsData[key];
-            try {
-              const senderRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.senderUuid}.json`);
-              const senderData = await senderRes.json();
-              const receiverRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.receiverUuid}.json`);
-              const receiverData = await receiverRes.json();
-              return {
-                id: req.id || key,
-                sender: req.senderUuid,
-                receiver: req.receiverUuid,
-                state: req.state || 'PENDING',
-                timestamp: req.timestamp || Date.now(),
-                users: [
-                  { 
-                    uuid: req.senderUuid, 
-                    username: senderData?.username || req.senderUsername,
-                    avatarUrl: senderData?.avatarUrl || null
-                  },
-                  { 
-                    uuid: req.receiverUuid, 
-                    username: receiverData?.username || req.receiverUsername,
-                    avatarUrl: receiverData?.avatarUrl || null
+                      return {
+                        uuid: fUuid,
+                        username: userData.username || 'Unknown',
+                        state: onlineState,
+                        server: serverAddress,
+                        pingEnabled,
+                        avatarUrl: userData.avatarUrl || null
+                      } as FriendsFriendUser;
+                    }
+                  } catch (err) {
+                    console.error("Failed to fetch details in loop for:", fUuid, err);
                   }
-                ]
-              };
-            } catch (err) {
-              console.error("Failed to load details for request in loop:", key, err);
-              return {
-                id: req.id || key,
-                sender: req.senderUuid,
-                receiver: req.receiverUuid,
-                state: req.state || 'PENDING',
-                timestamp: req.timestamp || Date.now(),
-                users: [
-                  { uuid: req.senderUuid, username: req.senderUsername, avatarUrl: null },
-                  { uuid: req.receiverUuid, username: req.receiverUsername, avatarUrl: null }
-                ]
-              };
+                  return null;
+                })
+              );
+              friendsList = friendsDetails.filter((f): f is FriendsFriendUser => f !== null);
+            } else {
+              friendsList = [];
             }
-          }));
+          } catch (err) {
+            console.error("Failed to fetch friends in syncLoop:", err);
+          }
+
+          friendsList.forEach(f => {
+            const prevState = previousStates[f.uuid];
+            if (prevState !== undefined && prevState !== f.state) {
+              if (f.state === 'OFFLINE' && get().notificationsEnabled) {
+                toast.player(i18n.t('friends.notifications.offline', { username: f.username }), f.uuid);
+              } else if (['ONLINE', 'AFK', 'BUSY'].includes(f.state) && prevState === 'OFFLINE' && get().notificationsEnabled) {
+                toast.player(i18n.t('friends.notifications.online', { username: f.username }), f.uuid);
+              }
+            }
+            previousStates[f.uuid] = f.state;
+          });
+
+          set({ friends: friendsList, lastFetchedAt: Date.now() });
         }
 
-        const incomingReqs = requestsList.filter(r => r.receiver === myUuid);
-        if (previousRequestsCount !== -1 && incomingReqs.length > previousRequestsCount && get().notificationsEnabled) {
-          const newReq = incomingReqs.find(r => r.timestamp > (Date.now() - 10000));
-          if (newReq) {
-            const senderUser = newReq.users.find(u => u.uuid !== myUuid);
-            if (senderUser) {
-              toast.player(i18n.t('friends.notifications.friend_request', { name: senderUser.username }), senderUser.uuid);
+        let requestsList = get().pendingRequests;
+
+        if (shouldFetchDetails) {
+          try {
+            const reqsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}.json`);
+            const reqsData = await reqsRes.json();
+            if (reqsData) {
+              const keys = Object.keys(reqsData);
+              requestsList = await Promise.all(keys.map(async (key) => {
+                const req = reqsData[key];
+                try {
+                  const senderRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.senderUuid}.json`);
+                  const senderData = await senderRes.json();
+                  const receiverRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.receiverUuid}.json`);
+                  const receiverData = await receiverRes.json();
+                  return {
+                    id: req.id || key,
+                    sender: req.senderUuid,
+                    receiver: req.receiverUuid,
+                    state: req.state || 'PENDING',
+                    timestamp: req.timestamp || Date.now(),
+                    users: [
+                      { 
+                        uuid: req.senderUuid, 
+                        username: senderData?.username || req.senderUsername,
+                        avatarUrl: senderData?.avatarUrl || null
+                      },
+                      { 
+                        uuid: req.receiverUuid, 
+                        username: receiverData?.username || req.receiverUsername,
+                        avatarUrl: receiverData?.avatarUrl || null
+                      }
+                    ]
+                  };
+                } catch (err) {
+                  console.error("Failed to load details for request in loop:", key, err);
+                  return {
+                    id: req.id || key,
+                    sender: req.senderUuid,
+                    receiver: req.receiverUuid,
+                    state: req.state || 'PENDING',
+                    timestamp: req.timestamp || Date.now(),
+                    users: [
+                      { uuid: req.senderUuid, username: req.senderUsername, avatarUrl: null },
+                      { uuid: req.receiverUuid, username: req.receiverUsername, avatarUrl: null }
+                    ]
+                  };
+                }
+              }));
+            } else {
+              requestsList = [];
+            }
+          } catch (err) {
+            console.error("Failed to fetch requests in syncLoop:", err);
+          }
+
+          const incomingReqs = requestsList.filter(r => r.receiver === myUuid);
+          if (previousRequestsCount !== -1 && incomingReqs.length > previousRequestsCount && get().notificationsEnabled) {
+            const newReq = incomingReqs.find(r => r.timestamp > (Date.now() - 10000));
+            if (newReq) {
+              const senderUser = newReq.users.find(u => u.uuid !== myUuid);
+              if (senderUser) {
+                toast.player(i18n.t('friends.notifications.friend_request', { name: senderUser.username }), senderUser.uuid);
+              }
             }
           }
+          previousRequestsCount = incomingReqs.length;
+          set({ pendingRequests: requestsList });
         }
-        previousRequestsCount = incomingReqs.length;
-        set({ pendingRequests: requestsList });
 
         const activeFriend = get().activeChatFriend;
         if (activeFriend) {
@@ -844,6 +863,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         if (get().notificationsEnabled) {
           await Promise.all(
             friendsList.map(async (friend) => {
+              if (friend.state === 'OFFLINE') return;
+
               const sortedIds = [myUuid, friend.uuid].sort();
               const chatId = `${sortedIds[0]}_${sortedIds[1]}`;
               
