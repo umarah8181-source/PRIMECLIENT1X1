@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { useProcessStore } from './useProcessStore';
 import { useChatStore, ChatMessage } from './chat-store';
 import { toast } from '../components/ui/GlobalToaster';
@@ -143,7 +143,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
   loadRanks: async () => {
     try {
-      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/ranks.json`);
+      const res = await fetch(`https://primeclient.is-best.net/ranks.json`);
       const data = await res.json();
       set({ ranks: data || {} });
     } catch (e) {
@@ -161,7 +161,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const usernameLower = username.trim().toLowerCase();
-      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${usernameLower}.json`);
+      const res = await fetch(`https://primeclient.is-best.net/friendsAccounts/${usernameLower}.json`);
       const data = await res.json();
       
       if (!data) {
@@ -205,7 +205,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       }
 
       // Check if exists
-      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${usernameLower}.json`);
+      const res = await fetch(`https://primeclient.is-best.net/friendsAccounts/${usernameLower}.json`);
       const data = await res.json();
       if (data) {
         throw new Error("Username is already taken");
@@ -213,7 +213,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
       const uuid = crypto.randomUUID();
       
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${usernameLower}.json`, {
+      await fetch(`https://primeclient.is-best.net/friendsAccounts/${usernameLower}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -234,7 +234,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
           allowServerInvites: true
         }
       };
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${uuid}.json`, {
+      await fetch(`https://primeclient.is-best.net/users/${uuid}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
@@ -262,12 +262,12 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     const account = get().friendsAccount;
     if (account) {
       try {
-        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${account.uuid}/state.json`, {
+        await fetch(`https://primeclient.is-best.net/users/${account.uuid}/state.json`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify('OFFLINE')
         });
-        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${account.uuid}/lastActive.json`, {
+        await fetch(`https://primeclient.is-best.net/users/${account.uuid}/lastActive.json`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(0)
@@ -313,7 +313,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       }
       const myUuid = account.uuid;
 
-      const friendsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}.json`);
+      const friendsRes = await fetch(`https://primeclient.is-best.net/friends/${myUuid}.json`);
       const friendsData = await friendsRes.json();
       
       let friendsList: FriendsFriendUser[] = [];
@@ -322,7 +322,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         const friendsDetails = await Promise.all(
           friendUuids.map(async (fUuid) => {
             try {
-              const userRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${fUuid}.json`);
+              const userRes = await fetch(`https://primeclient.is-best.net/users/${fUuid}.json`);
               const userData = await userRes.json();
               if (userData) {
                 const pingEnabled = friendsData[fUuid]?.pingEnabled || false;
@@ -359,7 +359,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       if (!account) return;
       const myUuid = account.uuid;
 
-      const reqsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}.json`);
+      const reqsRes = await fetch(`https://primeclient.is-best.net/friendRequests/${myUuid}.json`);
       const reqsData = await reqsRes.json();
       let requestsList: FriendRequestWithUsers[] = [];
       if (reqsData) {
@@ -367,9 +367,9 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         requestsList = await Promise.all(keys.map(async (key) => {
           const req = reqsData[key];
           try {
-            const senderRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.senderUuid}.json`);
+            const senderRes = await fetch(`https://primeclient.is-best.net/users/${req.senderUuid}.json`);
             const senderData = await senderRes.json();
-            const receiverRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.map/users/${req.receiverUuid}.json`);
+            const receiverRes = await fetch(`https://primeclient.is-best.net/users/${req.receiverUuid}.json`);
             const receiverData = await receiverRes.json();
             return {
               id: req.id || key,
@@ -419,7 +419,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       if (!account) return;
       const myUuid = account.uuid;
 
-      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}.json`);
+      const res = await fetch(`https://primeclient.is-best.net/users/${myUuid}.json`);
       let userData = await res.json();
 
       if (!userData) {
@@ -434,7 +434,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
             allowServerInvites: true
           }
         };
-        await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}.json`, {
+        await fetch(`https://primeclient.is-best.net/users/${myUuid}.json`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(userData)
@@ -468,7 +468,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       const myUsername = account.username;
 
       const nameLower = name.trim().toLowerCase();
-      const res = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendsAccounts/${nameLower}.json`);
+      const res = await fetch(`https://primeclient.is-best.net/friendsAccounts/${nameLower}.json`);
       const targetData = await res.json();
       if (!targetData) {
         throw new Error("User '" + name + "' not found on the friends network");
@@ -491,13 +491,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         timestamp: Date.now()
       };
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${targetUuid}/${myUuid}.json`, {
+      await fetch(`https://primeclient.is-best.net/friendRequests/${targetUuid}/${myUuid}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...requestObj, id: myUuid })
       });
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}/${targetUuid}.json`, {
+      await fetch(`https://primeclient.is-best.net/friendRequests/${myUuid}/${targetUuid}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestObj)
@@ -523,15 +523,15 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
       const friendUuid = request.sender === myUuid ? request.receiver : request.sender;
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}/${friendUuid}.json`, { method: 'DELETE' });
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${friendUuid}/${myUuid}.json`, { method: 'DELETE' });
+      await fetch(`https://primeclient.is-best.net/friendRequests/${myUuid}/${friendUuid}.json`, { method: 'DELETE' });
+      await fetch(`https://primeclient.is-best.net/friendRequests/${friendUuid}/${myUuid}.json`, { method: 'DELETE' });
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}/${friendUuid}.json`, {
+      await fetch(`https://primeclient.is-best.net/friends/${myUuid}/${friendUuid}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: true, pingEnabled: false })
       });
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${friendUuid}/${myUuid}.json`, {
+      await fetch(`https://primeclient.is-best.net/friends/${friendUuid}/${myUuid}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: true, pingEnabled: false })
@@ -563,8 +563,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
       const friendUuid = request.sender === myUuid ? request.receiver : request.sender;
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}/${friendUuid}.json`, { method: 'DELETE' });
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${friendUuid}/${myUuid}.json`, { method: 'DELETE' });
+      await fetch(`https://primeclient.is-best.net/friendRequests/${myUuid}/${friendUuid}.json`, { method: 'DELETE' });
+      await fetch(`https://primeclient.is-best.net/friendRequests/${friendUuid}/${myUuid}.json`, { method: 'DELETE' });
 
       set((state) => ({
         pendingRequests: state.pendingRequests.filter(
@@ -583,8 +583,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       if (!account) throw new Error("Not logged into friends account");
       const myUuid = account.uuid;
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}/${uuid}.json`, { method: 'DELETE' });
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${uuid}/${myUuid}.json`, { method: 'DELETE' });
+      await fetch(`https://primeclient.is-best.net/friends/${myUuid}/${uuid}.json`, { method: 'DELETE' });
+      await fetch(`https://primeclient.is-best.net/friends/${uuid}/${myUuid}.json`, { method: 'DELETE' });
 
       set((state) => ({
         friends: state.friends.filter((f) => f.uuid !== uuid),
@@ -601,7 +601,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       if (!account) throw new Error("Not logged into friends account");
       const myUuid = account.uuid;
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}/state.json`, {
+      await fetch(`https://primeclient.is-best.net/users/${myUuid}/state.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(status)
@@ -628,7 +628,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       if (!friend) return false;
       const nextVal = !friend.pingEnabled;
 
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}/${friend.uuid}/pingEnabled.json`, {
+      await fetch(`https://primeclient.is-best.net/friends/${myUuid}/${friend.uuid}/pingEnabled.json`, {
         method: 'PUT',
         body: JSON.stringify(nextVal)
       });
@@ -683,7 +683,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         const currentPrivacy = currentUserState?.privacy || { showServer: true, allowRequests: true, allowServerInvites: true };
 
         if (loopCount % 4 === 0) {
-          await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}.json`, {
+          await fetch(`https://primeclient.is-best.net/users/${myUuid}.json`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -701,7 +701,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
         if (shouldFetchDetails) {
           try {
-            const friendsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friends/${myUuid}.json`);
+            const friendsRes = await fetch(`https://primeclient.is-best.net/friends/${myUuid}.json`);
             const friendsData = await friendsRes.json();
             
             if (friendsData) {
@@ -709,7 +709,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
               const friendsDetails = await Promise.all(
                 friendUuids.map(async (fUuid) => {
                   try {
-                    const userRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${fUuid}.json`);
+                    const userRes = await fetch(`https://primeclient.is-best.net/users/${fUuid}.json`);
                     const userData = await userRes.json();
                     if (userData) {
                       const pingEnabled = friendsData[fUuid]?.pingEnabled || false;
@@ -759,16 +759,16 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
         if (shouldFetchDetails) {
           try {
-            const reqsRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/friendRequests/${myUuid}.json`);
+            const reqsRes = await fetch(`https://primeclient.is-best.net/friendRequests/${myUuid}.json`);
             const reqsData = await reqsRes.json();
             if (reqsData) {
               const keys = Object.keys(reqsData);
               requestsList = await Promise.all(keys.map(async (key) => {
                 const req = reqsData[key];
                 try {
-                  const senderRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.senderUuid}.json`);
+                  const senderRes = await fetch(`https://primeclient.is-best.net/users/${req.senderUuid}.json`);
                   const senderData = await senderRes.json();
-                  const receiverRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${req.receiverUuid}.json`);
+                  const receiverRes = await fetch(`https://primeclient.is-best.net/users/${req.receiverUuid}.json`);
                   const receiverData = await receiverRes.json();
                   return {
                     id: req.id || key,
@@ -830,7 +830,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
           const sortedIds = [myUuid, activeFriend.uuid].sort();
           const chatId = `${sortedIds[0]}_${sortedIds[1]}`;
 
-          const msgRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/messages/${chatId}.json`);
+          const msgRes = await fetch(`https://primeclient.is-best.net/messages/${chatId}.json`);
           const msgData = await msgRes.json();
           let messagesList: ChatMessage[] = [];
           if (msgData) {
@@ -847,7 +847,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
           useChatStore.setState({ messages: messagesList });
 
-          const typingRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}/typing.json`);
+          const typingRes = await fetch(`https://primeclient.is-best.net/chats/${chatId}/typing.json`);
           const typingData = await typingRes.json();
           const typingSet = new Set<string>();
           if (typingData) {
@@ -870,7 +870,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
               
               if (activeFriend?.uuid === friend.uuid) return;
 
-              const chatRes = await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}.json`);
+              const chatRes = await fetch(`https://primeclient.is-best.net/chats/${chatId}.json`);
               const chatData = await chatRes.json();
               
               if (chatData?.latestMessage) {
@@ -979,7 +979,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       const { currentUser } = get();
       if (!currentUser) return;
       
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${currentUser.uuid}/privacy/${setting}.json`, {
+      await fetch(`https://primeclient.is-best.net/users/${currentUser.uuid}/privacy/${setting}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(value)
@@ -1012,7 +1012,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       
       // Patch user profile
       const cleanAvatarUrl = newAvatarUrl.trim();
-      await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${myUuid}.json`, {
+      await fetch(`https://primeclient.is-best.net/users/${myUuid}.json`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1056,12 +1056,12 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
           if (currentAccount) {
             await get().disconnectWebSocket();
             try {
-              await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${currentAccount.uuid}/state.json`, {
+              await fetch(`https://primeclient.is-best.net/users/${currentAccount.uuid}/state.json`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify('OFFLINE')
               });
-              await fetch(`https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users/${currentAccount.uuid}/lastActive.json`, {
+              await fetch(`https://primeclient.is-best.net/users/${currentAccount.uuid}/lastActive.json`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(0)

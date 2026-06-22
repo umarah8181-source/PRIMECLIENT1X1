@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send, Users, Settings } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -17,8 +17,8 @@ interface CustomNotification {
   createdAt: string;
 }
 
-const DATABASE_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/servers.json";
-const NOTIFICATIONS_URL = "https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/notifications.json";
+const DATABASE_URL = "https://primeclient.is-best.net/servers.json";
+const NOTIFICATIONS_URL = "https://primeclient.is-best.net/notifications.json";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"servers" | "notifications" | "updates" | "active-users" | "settings">("servers");
@@ -103,7 +103,7 @@ export default function App() {
 
   const fetchCurrentUpdateInfo = async () => {
     try {
-      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/update.json");
+      const response = await fetch("https://primeclient.is-best.net/update.json");
       if (!response.ok) throw new Error("Failed to fetch update info");
       const data = await response.json();
       if (data) {
@@ -270,7 +270,7 @@ export default function App() {
   const fetchActiveUsers = async () => {
     setLoadingUsers(true);
     try {
-      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/users.json");
+      const response = await fetch("https://primeclient.is-best.net/users.json");
       if (!response.ok) throw new Error("Failed to fetch users");
       const data = await response.json();
       if (data) {
@@ -309,7 +309,7 @@ export default function App() {
   const fetchThemeSettings = async () => {
     setLoadingSettings(true);
     try {
-      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/config/christmasThemeUnlocked.json");
+      const response = await fetch("https://primeclient.is-best.net/config/christmasThemeUnlocked.json");
       if (!response.ok) throw new Error("Failed to fetch settings");
       const data = await response.json();
       setChristmasThemeUnlocked(!!data);
@@ -324,7 +324,7 @@ export default function App() {
   const handleToggleChristmasTheme = async (newValue: boolean) => {
     setLoadingSettings(true);
     try {
-      const response = await fetch("https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/config/christmasThemeUnlocked.json", {
+      const response = await fetch("https://primeclient.is-best.net/config/christmasThemeUnlocked.json", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newValue),
@@ -397,7 +397,7 @@ export default function App() {
     try {
       if (editId) {
         // Edit existing server
-        const url = `https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/servers/${editId}.json`;
+        const url = `https://primeclient.is-best.net/servers/${editId}.json`;
         const response = await fetch(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -435,7 +435,7 @@ export default function App() {
     if (!confirm("Are you sure you want to delete this server?")) return;
 
     try {
-      const url = `https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/servers/${id}.json`;
+      const url = `https://primeclient.is-best.net/servers/${id}.json`;
       const response = await fetch(url, { method: "DELETE" });
       if (!response.ok) throw new Error("Failed to delete server");
       showNotification("success", "Server deleted successfully!");
@@ -481,7 +481,7 @@ export default function App() {
     if (!confirm("Are you sure you want to delete this notification?")) return;
 
     try {
-      const url = `https://prime-client-b9bcd-default-rtdb.asia-southeast1.firebasedatabase.app/notifications/${id}.json`;
+      const url = `https://primeclient.is-best.net/notifications/${id}.json`;
       const response = await fetch(url, { method: "DELETE" });
       if (!response.ok) throw new Error("Failed to delete notification");
       showNotification("success", "Notification deleted successfully!");

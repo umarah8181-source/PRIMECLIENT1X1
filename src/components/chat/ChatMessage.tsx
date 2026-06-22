@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useCrafatarAvatar } from "../../hooks/useCrafatarAvatar";
 import { useProfileStore } from "../../store/profile-store";
 import { useProfileLaunch } from "../../hooks/useProfileLaunch";
 import { useFriendsStore } from "../../store/friends-store";
+import { useChatStore } from "../../store/chat-store";
 import { toast } from "react-hot-toast";
 import { renderRankBadge } from "../../lib/rank-utils";
 
@@ -40,6 +42,21 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message, isOwn, friendUuid, friendName, currentUserUuid, currentUserName, accentColor, showHeader, customAvatarUrl }: ChatMessageProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteMessage = useChatStore((s) => s.deleteMessage);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this message? This cannot be undone.')) return;
+    setIsDeleting(true);
+    try {
+      await deleteMessage(message._id);
+      toast.success('Message deleted');
+    } catch {
+      toast.error('Failed to delete message');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const avatarUuid = isOwn ? currentUserUuid : friendUuid;
   const crafatarAvatar = useCrafatarAvatar({ uuid: avatarUuid, size: 32 });
   const avatarUrl = customAvatarUrl || crafatarAvatar;
@@ -80,7 +97,7 @@ export function ChatMessage({ message, isOwn, friendUuid, friendName, currentUse
   const displayName = isOwn ? (currentUserName || "You") : friendName;
 
   return (
-    <div className="flex gap-3 px-3 py-1 hover:bg-white/5 transition-colors group">
+    <div className="flex gap-3 px-3 py-1 hover:bg-white/5 transition-colors group relative">
       {/* Avatar or hover timestamp */}
       <div className="w-8 flex-shrink-0 flex items-start justify-center pt-0.5">
         {showHeader ? (
@@ -173,6 +190,23 @@ export function ChatMessage({ message, isOwn, friendUuid, friendName, currentUse
           </p>
         )}
       </div>
+
+      {/* Delete button — only for own messages, shown on hover */}
+      {isOwn && (
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          title="Delete message"
+          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded cursor-pointer"
+          style={{
+            backgroundColor: 'rgba(239,68,68,0.15)',
+            color: isDeleting ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.8)',
+            border: '1px solid rgba(239,68,68,0.3)',
+          }}
+        >
+          <Icon icon={isDeleting ? 'solar:refresh-bold' : 'solar:trash-bin-trash-bold'} className={`w-3.5 h-3.5 ${isDeleting ? 'animate-spin' : ''}`} />
+        </button>
+      )}
     </div>
   );
 }
