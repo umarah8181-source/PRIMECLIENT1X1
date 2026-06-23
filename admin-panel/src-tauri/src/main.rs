@@ -535,7 +535,7 @@ async fn publish_update(
 
     let client = reqwest::Client::new();
     let response = client
-        .put("https://primeclient.is-best.net/update.json")
+        .put("https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/update.json")
         .json(&update_data)
         .send()
         .await
@@ -566,7 +566,7 @@ async fn select_installer_file() -> Result<Option<String>, String> {
 async fn remove_update() -> Result<(), String> {
     let client = reqwest::Client::new();
     let response = client
-        .delete("https://primeclient.is-best.net/update.json")
+        .delete("https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/update.json")
         .send()
         .await
         .map_err(|e| format!("Failed to send delete request: {}", e))?;

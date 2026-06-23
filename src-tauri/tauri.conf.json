@@ -96,7 +96,7 @@
           "https://sessionserver.mojang.com",
           "https://*.prime.gg",
           "https://*.firebasedatabase.app",
-          "https://primeclient.is-best.net"
+          "https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app"
         ],
         "img-src": [
           "'self'",
