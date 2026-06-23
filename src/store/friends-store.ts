@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { useProcessStore } from './useProcessStore';
 import { useChatStore, ChatMessage } from './chat-store';
 import { toast } from '../components/ui/GlobalToaster';
@@ -660,11 +660,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
     const syncLoop = async () => {
       try {
-        const account = get().friendsAccount;
-        if (!account) return;
+        const friendsAccount = get().friendsAccount;
+        const activeMcAccount = useMinecraftAuthStore.getState().activeAccount;
 
-        const myUuid = account.uuid;
-        const myUsername = account.username;
+        if (!friendsAccount && !activeMcAccount) return;
+
+        const myUuid = friendsAccount ? friendsAccount.uuid : activeMcAccount.id;
+        const myUsername = friendsAccount ? friendsAccount.username : activeMcAccount.username;
 
         const processes = useProcessStore.getState().processes;
         if (processes.length === 0 && get().launchedServer !== null) {
@@ -699,7 +701,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         const shouldFetchDetails = loopCount === 0 || loopCount % 3 === 0;
         let friendsList = get().friends;
 
-        if (shouldFetchDetails) {
+        if (shouldFetchDetails && friendsAccount) {
           try {
             const friendsRes = await fetch(`https://primeclient.is-best.net/friends/${myUuid}.json`);
             const friendsData = await friendsRes.json();
@@ -1041,6 +1043,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     if (!minecraftAccount) {
       if (currentAccount) {
         await get().logoutFriendsAccount();
+      } else {
+        await get().disconnectWebSocket();
       }
       return;
     }
@@ -1090,6 +1094,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       if (currentAccount) {
         await get().logoutFriendsAccount();
       }
+      await get().connectWebSocket();
     }
   },
 }));

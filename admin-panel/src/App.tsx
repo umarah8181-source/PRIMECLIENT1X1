@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Server, Plus, Trash2, Edit3, Save, RotateCcw, AlertTriangle, Bell, Send, Users, Settings } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -25,6 +25,7 @@ export default function App() {
   
   // Active Users State
   const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null);
+  const [activeUsersList, setActiveUsersList] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Theme Settings State
@@ -278,13 +279,14 @@ export default function App() {
         const activeList: any[] = [];
         Object.entries(data).forEach(([uuid, val]: [string, any]) => {
           if (val && typeof val === "object") {
-            const isOnline = val.state === "ONLINE" || val.state === "PLAYING";
+            const isOnline = val.state !== "OFFLINE" && val.state !== "INVISIBLE";
             const wasActiveRecently = val.lastActive && (now - val.lastActive <= 45000);
             if (isOnline && wasActiveRecently) {
               activeList.push({
                 uuid,
                 username: val.username || "Unknown",
                 state: val.state || "ONLINE",
+                server: val.server || null,
                 lastActive: val.lastActive || 0,
               });
             }
@@ -295,9 +297,11 @@ export default function App() {
           if (a.state !== "PLAYING" && b.state === "PLAYING") return 1;
           return a.username.localeCompare(b.username);
         });
-         setActiveUsersCount(activeList.length);
+        setActiveUsersCount(activeList.length);
+        setActiveUsersList(activeList);
       } else {
         setActiveUsersCount(0);
+        setActiveUsersList([]);
       }
     } catch (err) {
       console.error("Failed to load active users:", err);
@@ -1035,32 +1039,137 @@ export default function App() {
       )}
 
       {activeTab === "active-users" && (
-        <div className="glass-panel" style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center", padding: "3rem 2rem" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "80px", height: "80px", borderRadius: "50%", background: "rgba(52, 211, 153, 0.1)", border: "2px solid rgba(52, 211, 153, 0.3)", marginBottom: "1.5rem", boxShadow: "0 0 20px rgba(52, 211, 153, 0.2)" }}>
-            <Users size={36} style={{ color: "#34d399" }} />
-          </div>
-          
-          <h2 style={{ fontSize: "1.5rem", marginBottom: "0.5rem", justifyContent: "center" }}>Active Players</h2>
-          <p style={{ color: "rgba(255, 255, 255, 0.5)", marginBottom: "2rem" }}>
-            The total number of clients currently active and playing.
-          </p>
-
-          {loadingUsers ? (
-            <div style={{ padding: "1.5rem" }}>
-              <RotateCcw className="animate-spin" size={32} style={{ margin: "0 auto" }} />
-              <p style={{ marginTop: "1rem", color: "rgba(255, 255, 255, 0.5)" }}>Refreshing active player count...</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem", maxWidth: "800px", margin: "0 auto" }}>
+          <div className="glass-panel" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.5rem 2.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "56px", height: "56px", borderRadius: "50%", background: "rgba(52, 211, 153, 0.1)", border: "1px solid rgba(52, 211, 153, 0.2)" }}>
+                <Users size={24} style={{ color: "#34d399" }} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: "1.4rem", marginBottom: "0.25rem", borderBottom: "none", paddingBottom: 0 }}>Active Players</h2>
+                <p style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: "0.9rem" }}>
+                  Live count of clients currently online in the launcher.
+                </p>
+              </div>
             </div>
-          ) : (
-            <div>
-              <div style={{ fontSize: "5rem", fontWeight: 800, color: "#34d399", textShadow: "0 0 30px rgba(52, 211, 153, 0.4)", lineHeight: 1, fontFamily: "monospace" }}>
+            
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <div style={{ fontSize: "3.5rem", fontWeight: 800, color: "#34d399", textShadow: "0 0 20px rgba(52, 211, 153, 0.3)", lineHeight: 1, fontFamily: "monospace" }}>
                 {activeUsersCount !== null ? activeUsersCount : 0}
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem", background: "rgba(255, 255, 255, 0.05)", padding: "0.5rem 1.25rem", borderRadius: "20px", fontSize: "0.9rem", color: "rgba(255, 255, 255, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#34d399", display: "inline-block", boxShadow: "0 0 8px #34d399" }}></span>
-                Live Client Count
-              </div>
+              <div style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.4)", marginTop: "0.25rem" }}>players online</div>
             </div>
-          )}
+          </div>
+
+          <div className="glass-panel" style={{ padding: "2rem" }}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem", color: "#fff" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#34d399", display: "inline-block", boxShadow: "0 0 8px #34d399" }}></span>
+              Online Client Registry
+            </h3>
+
+            {loadingUsers ? (
+              <div style={{ textAlign: "center", padding: "3rem 0" }}>
+                <RotateCcw className="animate-spin" style={{ margin: "0 auto", color: "rgba(255, 255, 255, 0.5)" }} size={28} />
+                <p style={{ marginTop: "1rem", color: "rgba(255, 255, 255, 0.5)", fontSize: "0.95rem" }}>Retrieving active client metadata...</p>
+              </div>
+            ) : activeUsersList.length === 0 ? (
+              <div className="empty-state" style={{ padding: "3rem 1.5rem", textAlign: "center", color: "rgba(255, 255, 255, 0.4)", border: "1px dashed rgba(255, 255, 255, 0.1)", borderRadius: "8px" }}>
+                No active players detected on the network.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "450px", overflowY: "auto", paddingRight: "0.5rem" }}>
+                {activeUsersList.map((user) => {
+                  const relativeTime = (() => {
+                    const diffSeconds = Math.max(0, Math.floor((Date.now() - user.lastActive) / 1000));
+                    if (diffSeconds < 5) return "Just now";
+                    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+                    return `${Math.floor(diffSeconds / 60)}m ago`;
+                  })();
+
+                  return (
+                    <div 
+                      key={user.uuid} 
+                      style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "space-between", 
+                        padding: "1rem 1.25rem", 
+                        background: "rgba(255, 255, 255, 0.02)", 
+                        borderRadius: "6px", 
+                        border: "1px solid rgba(255, 255, 255, 0.05)",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "1rem", minWidth: 0 }}>
+                        <div style={{ position: "relative" }}>
+                          <div style={{ width: "36px", height: "36px", borderRadius: "4px", background: "rgba(255, 255, 255, 0.05)", border: "1px solid rgba(255, 255, 255, 0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <img 
+                              src={`https://minotar.net/avatar/${user.username}/36`} 
+                              alt="face" 
+                              style={{ width: "28px", height: "28px", borderRadius: "2px", imageRendering: "pixelated" }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
+                              }}
+                            />
+                          </div>
+                          <span 
+                            style={{ 
+                              position: "absolute", 
+                              bottom: "-2px", 
+                              right: "-2px", 
+                              width: "10px", 
+                              height: "10px", 
+                              borderRadius: "50%", 
+                              background: user.state === "PLAYING" ? "#60a5fa" : "#34d399", 
+                              border: "2px solid #0a0b14",
+                              boxShadow: user.state === "PLAYING" ? "0 0 6px #60a5fa" : "0 0 6px #34d399"
+                            }} 
+                            title={user.state}
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <span style={{ fontWeight: 600, color: "#fff", fontSize: "1rem" }}>{user.username}</span>
+                            <span 
+                              style={{ 
+                                fontSize: "0.7rem", 
+                                fontWeight: 700, 
+                                padding: "0.1rem 0.4rem", 
+                                borderRadius: "3px", 
+                                background: user.state === "PLAYING" ? "rgba(96, 165, 250, 0.15)" : "rgba(52, 211, 153, 0.15)",
+                                color: user.state === "PLAYING" ? "#93c5fd" : "#6ee7b7",
+                                border: user.state === "PLAYING" ? "1px solid rgba(96, 165, 250, 0.3)" : "1px solid rgba(52, 211, 153, 0.3)"
+                              }}
+                            >
+                              {user.state.toLowerCase()}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.45)", fontFamily: "monospace", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", width: "100%" }}>
+                            {user.uuid}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.25rem" }}>
+                        {user.server ? (
+                          <div style={{ fontSize: "0.85rem", color: "#60a5fa", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "#60a5fa" }}></span>
+                            {user.server}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.4)" }}>In Launcher</div>
+                        )}
+                        <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.35)" }}>
+                          {relativeTime}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

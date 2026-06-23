@@ -965,7 +965,6 @@ impl MinecraftAuthStore {
         }
     }
 
-    /// Refresh token using Direct OAuth flow (browser-based login)
     async fn refresh_token_direct(&self, creds: &Credentials, cred_id: Uuid, profile_name: String) -> Result<Option<Credentials>> {
         info!("[Token Refresh] Getting OAuth refresh token (Direct flow)");
         let oauth_token = oauth_refresh_direct(&creds.refresh_token).await?;
@@ -982,10 +981,13 @@ impl MinecraftAuthStore {
         info!("[Token Refresh] Checking Minecraft entitlements");
         minecraft_entitlements(&minecraft_token.access_token).await?;
 
+        info!("[Token Refresh] Fetching Minecraft profile");
+        let profile = minecraft_profile(&minecraft_token.access_token).await?;
+
         info!("[Token Refresh] Creating new credentials");
         let val = Credentials {
-            id: cred_id,
-            username: profile_name,
+            id: profile.id.unwrap_or(cred_id),
+            username: profile.name,
             access_token: minecraft_token.access_token,
             refresh_token: oauth_token.value.refresh_token,
             expires: oauth_token.date + Duration::seconds(oauth_token.value.expires_in as i64),
@@ -1743,6 +1745,23 @@ async fn minecraft_profile(
             step: MinecraftAuthStep::MinecraftProfile,
         })?;
 
+    if !status.is_success() {
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err(MinecraftAuthenticationError::XboxError(
+                "This Microsoft account does not have a Minecraft profile. Please create a username on minecraft.net or in the Xbox app first.".to_string()
+            ));
+        }
+        if let Ok(err_val) = serde_json::from_str::<serde_json::Value>(&text) {
+            if let Some(msg) = err_val.get("errorMessage").and_then(|v| v.as_str()) {
+                return Err(MinecraftAuthenticationError::XboxError(msg.to_string()));
+            }
+        }
+        return Err(MinecraftAuthenticationError::XboxError(format!(
+            "Failed to fetch Minecraft profile (Status {}): {}",
+            status, text
+        )));
+    }
+
     serde_json::from_str(&text).map_err(|source| {
         MinecraftAuthenticationError::DeserializeResponse {
             source,
@@ -1793,6 +1812,18 @@ async fn minecraft_entitlements(
             step: MinecraftAuthStep::MinecraftEntitlements,
         })?;
 
+    if !status.is_success() {
+        if let Ok(err_val) = serde_json::from_str::<serde_json::Value>(&text) {
+            if let Some(msg) = err_val.get("errorMessage").and_then(|v| v.as_str()) {
+                return Err(MinecraftAuthenticationError::XboxError(msg.to_string()));
+            }
+        }
+        return Err(MinecraftAuthenticationError::XboxError(format!(
+            "Failed to check entitlements (Status {}): {}",
+            status, text
+        )));
+    }
+
     let entitlements: MinecraftEntitlements = serde_json::from_str(&text).map_err(|source| {
         MinecraftAuthenticationError::DeserializeResponse {
             source,
@@ -1803,9 +1834,12 @@ async fn minecraft_entitlements(
     })?;
 
     // Check if the account has a Minecraft Java Edition license
-    // Valid license items are "product_minecraft" or "game_minecraft"
+    // Valid license items are "product_minecraft" or "game_minecraft" or "subscription_minecraft"
     let has_java_license = entitlements.items.iter().any(|item| {
-        item.name == "product_minecraft" || item.name == "game_minecraft"
+        item.name == "product_minecraft"
+            || item.name == "game_minecraft"
+            || item.name == "subscription_minecraft"
+            || item.name.contains("minecraft")
     });
 
     if !has_java_license {
