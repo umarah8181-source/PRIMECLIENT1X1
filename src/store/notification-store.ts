@@ -36,7 +36,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       }
       let globalNotifications: UserNotification[] = [];
       try {
-        const res = await fetch("https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/notifications.json");
+        const res = await fetch("https://primeclient.is-best.net/notifications.json");
         if (res.ok) {
           const data = await res.json();
           if (data) {

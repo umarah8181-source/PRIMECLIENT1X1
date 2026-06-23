@@ -106,7 +106,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const sortedIds = [myUuid, friend.uuid].sort();
           const chatId = `${sortedIds[0]}_${sortedIds[1]}`;
           
-          const chatRes = await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}.json`);
+          const chatRes = await fetch(`https://primeclient.is-best.net/chats/${chatId}.json`);
           const chatData = await chatRes.json();
           
           const lastReadTimes = JSON.parse(localStorage.getItem('chat_last_read_times') || '{}');
@@ -136,7 +136,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadMessages: async (chatId: string, page: number = 0) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/messages/${chatId}.json`);
+      const res = await fetch(`https://primeclient.is-best.net/messages/${chatId}.json`);
       const data = await res.json();
       let messagesList: ChatMessage[] = [];
       if (data) {
@@ -179,7 +179,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         reactions: []
       };
 
-      await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/messages/${chatId}/${messageId}.json`, {
+      await fetch(`https://primeclient.is-best.net/messages/${chatId}/${messageId}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(message)
@@ -190,7 +190,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         latestMessage: message,
         timestamp: Date.now()
       };
-      await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}.json`, {
+      await fetch(`https://primeclient.is-best.net/chats/${chatId}.json`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(chatUpdate)
@@ -210,22 +210,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!activeChat) return;
       const chatId = activeChat._id;
 
-      const res = await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/messages/${chatId}/${messageId}.json`);
+      const res = await fetch(`https://primeclient.is-best.net/messages/${chatId}/${messageId}.json`);
       const existing = await res.json();
       if (!existing) return;
 
       const updated = { ...existing, content, editedAt: Date.now() };
 
-      await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/messages/${chatId}/${messageId}.json`, {
+      await fetch(`https://primeclient.is-best.net/messages/${chatId}/${messageId}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
       });
 
-      const chatRes = await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}.json`);
+      const chatRes = await fetch(`https://primeclient.is-best.net/chats/${chatId}.json`);
       const chatData = await chatRes.json();
       if (chatData?.latestMessage?._id === messageId) {
-        await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}/latestMessage/content.json`, {
+        await fetch(`https://primeclient.is-best.net/chats/${chatId}/latestMessage/content.json`, {
           method: 'PUT',
           body: JSON.stringify(content)
         });
@@ -246,14 +246,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!activeChat) return;
       const chatId = activeChat._id;
 
-      await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/messages/${chatId}/${messageId}.json`, {
+      await fetch(`https://primeclient.is-best.net/messages/${chatId}/${messageId}.json`, {
         method: 'DELETE'
       });
 
-      const chatRes = await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}.json`);
+      const chatRes = await fetch(`https://primeclient.is-best.net/chats/${chatId}.json`);
       const chatData = await chatRes.json();
       if (chatData?.latestMessage?._id === messageId) {
-        await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}/latestMessage.json`, {
+        await fetch(`https://primeclient.is-best.net/chats/${chatId}/latestMessage.json`, {
           method: 'DELETE'
         });
       }
@@ -273,13 +273,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!friendsAccount) return;
       const myUuid = friendsAccount.uuid;
 
-      await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}/typing/${myUuid}.json`, {
+      await fetch(`https://primeclient.is-best.net/chats/${chatId}/typing/${myUuid}.json`, {
         method: 'PUT',
         body: JSON.stringify(Date.now())
       });
 
       setTimeout(async () => {
-        await fetch(`https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/chats/${chatId}/typing/${myUuid}.json`, {
+        await fetch(`https://primeclient.is-best.net/chats/${chatId}/typing/${myUuid}.json`, {
           method: 'DELETE'
         });
       }, 3000);

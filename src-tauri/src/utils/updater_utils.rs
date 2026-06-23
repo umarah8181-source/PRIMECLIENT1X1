@@ -133,7 +133,7 @@ pub async fn check_update_available(
 
     let client = reqwest::Client::new();
     let response = client
-        .get("https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/update.json")
+        .get("https://primeclient.is-best.net/update.json")
         .send()
         .await
         .map_err(|e| AppError::Other(format!("Failed to contact update server: {}", e)))?;

@@ -44,7 +44,7 @@ export function PlayTab() {
     let active = true;
     const fetchServers = async () => {
       try {
-        const response = await fetch("https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/servers.json");
+        const response = await fetch("https://primeclient.is-best.net/servers.json");
         if (!response.ok) throw new Error("Failed to fetch servers");
         const data = await response.json();
         if (data && active) {

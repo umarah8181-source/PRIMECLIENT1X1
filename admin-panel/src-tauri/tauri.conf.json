@@ -29,8 +29,8 @@
         ],
         "connect-src": [
           "'self'",
-          "https://*.firebasedatabase.app",
-          "https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app",
+          "https://*.is-best.net",
+          "https://primeclient.is-best.net",
           "https://api.mcsrvstat.us",
           "https://catbox.moe"
         ],

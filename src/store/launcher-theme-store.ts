@@ -107,7 +107,7 @@ export const useLauncherThemeStore = create<LauncherThemeState>()(
 
       fetchRemoteThemeStatus: async () => {
         try {
-          const response = await fetch("https://primeclienttzt-default-rtdb.asia-southeast1.firebasedatabase.app/config/christmasThemeUnlocked.json");
+          const response = await fetch("https://primeclient.is-best.net/config/christmasThemeUnlocked.json");
           if (response.ok) {
             const data = await response.json();
             set({ christmasThemeUnlocked: !!data });
